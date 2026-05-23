@@ -1,0 +1,31 @@
+{
+  "name": "feedback-service",
+  "version": "1.0.0",
+  "description": "Centralized user feedback capture service",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tawala777/feedback-service.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tawala777/feedback-service/issues"
+  },
+  "homepage": "https://github.com/tawala777/feedback-service#readme",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.98.0",
+    "better-sqlite3": "^12.10.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
