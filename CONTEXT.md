@@ -44,7 +44,7 @@ feedback-service/
 
 ## Etat courant
 
-- **Travail en cours :** ticket #210 sur `main`
-- **Dernier ticket :** aucun avant #210
-- **Etat courant spécifique :** bootstrap initial posé, dépendances installées, health endpoint en ligne sur `127.0.0.1:4400`
+- **Travail en cours :** aucun
+- **Dernier ticket :** #210 — bootstrap initial livré sur `main`
+- **Etat courant spécifique :** commit `ff31312` poussé sur `origin/main`, service `feedback-service` online sous PM2, health endpoint validé sur `127.0.0.1:4400`
 - **Prochaine étape :** T2 — brancher SQLite et exposer les compteurs sur le health endpoint
