@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const dbModule = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 4400;
@@ -13,7 +14,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use(cors({ origin: ORIGINS }));
 
 app.get('/api/feedback/health', (req, res) => {
-  res.json({ ok: true, port: PORT, ts: new Date().toISOString() });
+  res.json({ ok: true, port: PORT, ts: new Date().toISOString(), db: dbModule.counts() });
 });
 
 app.listen(PORT, '127.0.0.1', () => {

@@ -25,13 +25,13 @@
 ```text
 feedback-service/
   src/
-    server.js        — bootstrap Express + CORS + health endpoint
-    db.js            — placeholder T2 (SQLite)
+    server.js        — bootstrap Express + CORS + health endpoint enrichi DB
+    db.js            — accès SQLite, migrations conversations/messages, helpers CRUD
     anthropic.js     — placeholder T3 (relais Anthropic)
     routing.js       — placeholder T4 (routing destinations)
   public/
     feedback-widget.js — placeholder T5/T6 (widget front)
-  data/              — stockage local SQLite (T2)
+  data/              — stockage local SQLite (`conversations.db`)
 ```
 
 ## Conventions
@@ -39,12 +39,13 @@ feedback-service/
 - Bind HTTP strict sur `127.0.0.1` uniquement
 - Port par défaut `4400`
 - Configuration runtime via `.env` local non versionné
-- Base SQLite prévue dans `data/`
+- Base SQLite dans `data/conversations.db`
+- SQLite en mode WAL
 - PM2 process name: `feedback-service`
 
 ## Etat courant
 
-- **Travail en cours :** aucun
-- **Dernier ticket :** #210 — bootstrap initial livré sur `main`
-- **Etat courant spécifique :** commit `ff31312` poussé sur `origin/main`, service `feedback-service` online sous PM2, health endpoint validé sur `127.0.0.1:4400`
-- **Prochaine étape :** T2 — brancher SQLite et exposer les compteurs sur le health endpoint
+- **Travail en cours :** ticket #211 sur `main`
+- **Dernier ticket :** #211 — SQLite branché avec schéma `conversations` / `messages` et health enrichi
+- **Etat courant spécifique :** `data/conversations.db` est créé automatiquement au boot, SQLite tourne en WAL, et `/api/feedback/health` expose désormais `db.conversations` + `db.messages` sur `127.0.0.1:4400`
+- **Prochaine étape :** T3 — endpoint `/api/feedback/chat` avec relais Anthropic et cadrage conversationnel
