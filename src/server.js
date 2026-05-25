@@ -136,8 +136,105 @@ function renderDetail(conv, messages, spec) {
   </body></html>`;
 }
 
+function renderApps(apps) {
+  const rows = apps.map((a) => {
+    const badge = a.configured ? '<span style="color:#047857;font-weight:600">configurée</span>' : '<span style="color:#b45309;font-weight:700">⚠ à configurer</span>';
+    return `<tr>
+      <td><code>${esc(a.slug)}</code></td>
+      <td>${esc(a.label)}</td>
+      <td>${esc(a.agent) || '—'}</td>
+      <td>${esc(a.ticket_url) || '—'}</td>
+      <td>${esc(a.mission) || '—'}</td>
+      <td>${a.lot ?? '—'}</td>
+      <td>${a.wave ?? '—'}</td>
+      <td>${a.skip ? 'oui' : 'non'}</td>
+      <td>${a.active ? 'oui' : 'non'}</td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+
+  return `<!DOCTYPE html><html lang="fr"><head>
+    <meta charset="UTF-8"><title>Apps — Admin</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 20px; color: #111; }
+      h1,h2 { margin-bottom: 10px; }
+      table { border-collapse: collapse; width: 100%; font-size: 14px; margin-bottom: 28px; }
+      th, td { border-bottom: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; vertical-align: top; }
+      th { background: #f3f4f6; }
+      tr:hover td { background: #fafafa; }
+      code { background: #f3f4f6; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+      label { display:block; font-size:13px; color:#374151; margin-bottom:4px; }
+      input { width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:6px; }
+      .grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; max-width: 900px; }
+      .checks { display:flex; gap:18px; margin: 8px 0 18px; }
+      .checks label { display:flex; align-items:center; gap:8px; margin:0; }
+      button { background:#2563eb; color:#fff; border:0; padding:10px 16px; border-radius:6px; cursor:pointer; }
+      a { color:#2563eb; text-decoration:none; }
+    </style></head><body>
+      <p><a href="/admin/feedbacks">← Retour feedbacks</a></p>
+      <h1>Apps — Admin</h1>
+      <table>
+        <thead><tr><th>Slug</th><th>Label</th><th>Agent</th><th>ticket_url</th><th>Mission</th><th>Lot</th><th>Wave</th><th>Skip</th><th>Active</th><th>État</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="10">Aucune app</td></tr>'}</tbody>
+      </table>
+      <h2>Créer / éditer une app</h2>
+      <form method="post" action="/api/admin/apps" onsubmit="event.preventDefault(); submitApp(this);">
+        <div class="grid">
+          <div><label>slug<input name="slug" required></label></div>
+          <div><label>label<input name="label"></label></div>
+          <div><label>agent<input name="agent" placeholder="candy ou sandy"></label></div>
+          <div><label>ticket_url<input name="ticket_url" placeholder="http://localhost:4000/api/tickets"></label></div>
+          <div><label>mission<input name="mission"></label></div>
+          <div><label>lot<input name="lot" type="number"></label></div>
+          <div><label>wave<input name="wave" type="number"></label></div>
+        </div>
+        <div class="checks">
+          <label><input type="checkbox" name="skip"> skip</label>
+          <label><input type="checkbox" name="active" checked> active</label>
+        </div>
+        <button type="submit">Enregistrer</button>
+        <span id="msg" style="margin-left:12px;color:#6b7280"></span>
+      </form>
+      <script>
+        async function submitApp(form) {
+          const fd = new FormData(form);
+          const body = {
+            slug: fd.get('slug'),
+            label: fd.get('label'),
+            agent: fd.get('agent'),
+            ticket_url: fd.get('ticket_url'),
+            mission: fd.get('mission'),
+            lot: fd.get('lot') === '' ? null : Number(fd.get('lot')),
+            wave: fd.get('wave') === '' ? null : Number(fd.get('wave')),
+            skip: fd.get('skip') ? 1 : 0,
+            active: fd.get('active') ? 1 : 0
+          };
+          const resp = await fetch('/api/admin/apps', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+          const msg = document.getElementById('msg');
+          if (!resp.ok) {
+            msg.textContent = 'Erreur de sauvegarde';
+            return;
+          }
+          msg.textContent = 'Enregistré, recharge la page pour voir les valeurs mises à jour.';
+        }
+      </script>
+    </body></html>`;
+}
+
 app.get('/api/feedback/health', (req, res) => {
   res.json({ ok: true, port: PORT, ts: new Date().toISOString(), db: dbModule.counts() });
+});
+
+app.get('/api/admin/apps', (req, res) => {
+  res.json(dbModule.listApps());
+});
+
+app.post('/api/admin/apps', (req, res) => {
+  const { slug, agent } = req.body;
+  if (!slug) return res.status(400).json({ error: 'slug requis' });
+  const configured = agent ? 1 : 0;
+  dbModule.upsertApp({ ...req.body, configured });
+  res.json({ ok: true, app: dbModule.getApp(slug) });
 });
 
 app.post('/api/feedback/chat', async (req, res) => {
@@ -251,6 +348,10 @@ app.get('/admin/feedbacks/:id', async (req, res) => {
 
   await enrichAgentTicketStatus(conv);
   res.send(renderDetail(conv, messages, spec));
+});
+
+app.get('/admin/apps', (req, res) => {
+  res.send(renderApps(dbModule.listApps()));
 });
 
 app.use('/widget', express.static(path.join(__dirname, '..', 'public'), {

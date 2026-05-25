@@ -26,7 +26,8 @@ function buildPayload(route, source, spec) {
 async function dispatchOne(conv) {
   const route = getRoute(conv.source);
   if (!route) {
-    db.markDispatchFailed({ conversationId: conv.id, error: `unknown source: ${conv.source}` });
+    db.discoverApp(conv.source);
+    console.log(`[dispatcher] source inconnue "${conv.source}" → app créée (à configurer), feedback en file`);
     return;
   }
   if (route.skip) {

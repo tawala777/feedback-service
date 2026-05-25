@@ -141,6 +141,14 @@ function getApp(slug) {
   return db.prepare('SELECT * FROM apps WHERE slug = ?').get(slug);
 }
 
+function discoverApp(slug) {
+  if (getApp(slug)) return getApp(slug);
+  const now = Date.now();
+  db.prepare(`INSERT INTO apps (slug,label,agent,ticket_url,mission,lot,wave,skip,configured,active,created_at,updated_at)
+              VALUES (?,?,NULL,NULL,NULL,NULL,NULL,0,0,1,${now},${now})`).run(slug, slug);
+  return getApp(slug);
+}
+
 function upsertApp(a) {
   const now = Date.now();
   db.prepare(`INSERT INTO apps (slug,label,agent,ticket_url,mission,lot,wave,skip,configured,active,created_at,updated_at)
@@ -182,6 +190,7 @@ module.exports = {
   markDispatchSkipped,
   listApps,
   getApp,
+  discoverApp,
   upsertApp,
   counts
 };

@@ -25,7 +25,7 @@
 ```text
 feedback-service/
   src/
-    server.js        — bootstrap Express + CORS + health endpoint enrichi DB + API chat + API submit + dashboard admin liste+détail + service statique widget + planification dispatch
+    server.js        — bootstrap Express + CORS + health endpoint enrichi DB + API chat + API submit + dashboard admin feedbacks + admin apps + service statique widget + planification dispatch
     db.js            — accès SQLite, migrations conversations/messages + table `apps`, helpers CRUD + file de dispatch locale
     llm.js           — relais Groq (OpenAI-compatible), prompt de cadrage, fallback modèles, dégradation propre
     dispatcher.js    — drain asynchrone des conversations `pending/failed` vers les backlogs agents
@@ -46,7 +46,8 @@ feedback-service/
 - SQLite en mode WAL
 - Le routing des apps n'est plus codé en dur : table SQLite `apps` + helper `getRoute(slug)`
 - Seed initial de `apps` : `bookingsExtApi`, `team-tracker`, `aam-website`, `stats-v1`, `hotel-aggregator` (comportement identique à l'ancien objet JS)
-- `listApps()` / `getApp()` / `upsertApp()` vivent dans `src/db.js`; `routing.js` ne contient plus de mapping statique
+- `listApps()` / `getApp()` / `discoverApp()` / `upsertApp()` vivent dans `src/db.js`; `routing.js` ne contient plus de mapping statique
+- Une source inconnue n'est plus rejetée au dispatch : elle est auto-créée dans `apps` avec `configured=0`, sans destination, et le feedback reste `pending` tant qu'un dev n'est pas assigné
 - Le widget statique est servi sous `/widget/*` avec `Cache-Control: public, max-age=300`
 - Les fichiers JS widget forcent `Content-Type: application/javascript; charset=utf-8`
 - Le widget utilise `document.currentScript` avec fallback `querySelector('script[src*="feedback-widget.js"]')`
@@ -65,11 +66,13 @@ feedback-service/
 - Chaque ligne de `/admin/feedbacks` pointe vers `/admin/feedbacks/:id`
 - `/admin/feedbacks/:id` affiche l'échange complet, la spec soumise (`submit_spec`) et l'état ticket enrichi si disponible
 - Pour les lignes `envoyé`, la liste et le détail tentent de lire le ticket agent courant et affichent son statut brut (`open`, `resolved`, `http 404`, `unreachable`, etc.) sans jamais casser la page
+- `/api/admin/apps` expose les apps en JSON ; `POST /api/admin/apps` crée/édite une app et recalcule `configured` selon la présence d'un `agent`
+- `/admin/apps` affiche le tableau des apps + un formulaire simple de configuration, avec badge visible `⚠ à configurer` quand `configured=0`
 - PM2 process name: `feedback-service`
 
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #227 — routing via table SQLite `apps` + `getRoute()`
-- **Etat courant spécifique :** le dispatcher et le dashboard ne dépendent plus d'un objet JS statique : le routing courant est seedé dans `apps`, `bookingsExtApi` continue à partir vers Candy local, `stats-v1` reste `pending` tant que `SANDY_TICKETS_URL` est vide, et le support `route.skip` est prêt pour la source `demo`
-- **Prochaine étape :** #228 — auto-découverte des apps inconnues + admin `/admin/apps`
+- **Dernier ticket :** #228 — auto-découverte des apps inconnues + admin `/admin/apps`
+- **Etat courant spécifique :** une `source` inconnue soumise puis dispatchée crée automatiquement une app `configured=0` et laisse le feedback `pending`; après configuration via `/api/admin/apps`, le cycle de dispatch suivant part sans redéploiement. Validation complète faite avec `appx-temp-228` puis nettoyage en base/backlog.
+- **Prochaine étape :** #229 — support `skip=1` pour app `demo` + séparation visuelle des feedbacks ignorés
