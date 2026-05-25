@@ -195,6 +195,17 @@ function renderDetail(conv, messages, spec) {
 function renderApps(apps) {
   const rows = apps.map((a) => {
     const badge = a.configured ? '<span style="color:#047857;font-weight:600">configurée</span>' : '<span style="color:#b45309;font-weight:700">⚠ à configurer</span>';
+    const payload = esc(JSON.stringify({
+      slug: a.slug,
+      label: a.label || '',
+      agent: a.agent || '',
+      ticket_url: a.ticket_url || '',
+      mission: a.mission || '',
+      lot: a.lot ?? '',
+      wave: a.wave ?? '',
+      skip: !!a.skip,
+      active: !!a.active
+    }));
     return `<tr>
       <td><code>${esc(a.slug)}</code></td>
       <td>${esc(a.label)}</td>
@@ -206,6 +217,7 @@ function renderApps(apps) {
       <td>${a.skip ? 'oui' : 'non'}</td>
       <td>${a.active ? 'oui' : 'non'}</td>
       <td>${badge}</td>
+      <td><button class="btn btn-secondary" type="button" onclick='fillAppForm(${payload})'>Éditer</button></td>
     </tr>`;
   }).join('');
 
@@ -229,19 +241,22 @@ function renderApps(apps) {
       .grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; max-width: 900px; }
       .checks { display:flex; gap:18px; margin: 8px 0 18px; }
       .checks label { display:flex; align-items:center; gap:8px; margin:0; }
-      button { background:#2563eb; color:#fff; border:0; padding:10px 16px; border-radius:6px; cursor:pointer; }
+      .btn { background:#2563eb; color:#fff; border:0; padding:10px 16px; border-radius:6px; cursor:pointer; }
+      .btn-secondary { background:#475569; padding:6px 10px; font-size:12px; }
+      .btn-reset { background:#e5e7eb; color:#111827; }
+      .actions { display:flex; gap:10px; align-items:center; margin-top:10px; }
       a { color:#2563eb; text-decoration:none; }
     </style></head><body>
       ${renderNav('apps')}
       <h1>Apps — Admin</h1>
       <div class="table-wrap">
       <table>
-        <thead><tr><th>Slug</th><th>Label</th><th>Agent</th><th class="url">ticket_url</th><th>Mission</th><th>Lot</th><th>Wave</th><th>Skip</th><th>Active</th><th>État</th></tr></thead>
-        <tbody>${rows || '<tr><td colspan="10">Aucune app</td></tr>'}</tbody>
+        <thead><tr><th>Slug</th><th>Label</th><th>Agent</th><th class="url">ticket_url</th><th>Mission</th><th>Lot</th><th>Wave</th><th>Skip</th><th>Active</th><th>État</th><th>Action</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="11">Aucune app</td></tr>'}</tbody>
       </table>
       </div>
       <h2>Créer / éditer une app</h2>
-      <form method="post" action="/api/admin/apps" onsubmit="event.preventDefault(); submitApp(this);">
+      <form id="app-form" method="post" action="/api/admin/apps" onsubmit="event.preventDefault(); submitApp(this);">
         <div class="grid">
           <div><label>slug<input name="slug" required></label></div>
           <div><label>label<input name="label"></label></div>
@@ -255,10 +270,35 @@ function renderApps(apps) {
           <label><input type="checkbox" name="skip"> skip</label>
           <label><input type="checkbox" name="active" checked> active</label>
         </div>
-        <button type="submit">Enregistrer</button>
-        <span id="msg" style="margin-left:12px;color:#6b7280"></span>
+        <div class="actions">
+          <button class="btn" id="save-btn" type="submit">Enregistrer</button>
+          <button class="btn btn-reset" type="button" onclick="resetAppForm()">Réinitialiser</button>
+          <span id="msg" style="color:#6b7280"></span>
+        </div>
       </form>
       <script>
+        function fillAppForm(app) {
+          const form = document.getElementById('app-form');
+          form.slug.value = app.slug || '';
+          form.label.value = app.label || '';
+          form.agent.value = app.agent || '';
+          form.ticket_url.value = app.ticket_url || '';
+          form.mission.value = app.mission || '';
+          form.lot.value = app.lot ?? '';
+          form.wave.value = app.wave ?? '';
+          form.skip.checked = !!app.skip;
+          form.active.checked = !!app.active;
+          document.getElementById('save-btn').textContent = 'Mettre à jour';
+          document.getElementById('msg').textContent = 'Édition de ' + app.slug;
+          form.slug.focus();
+        }
+        function resetAppForm() {
+          const form = document.getElementById('app-form');
+          form.reset();
+          form.active.checked = true;
+          document.getElementById('save-btn').textContent = 'Enregistrer';
+          document.getElementById('msg').textContent = '';
+        }
         async function submitApp(form) {
           const fd = new FormData(form);
           const body = {
@@ -279,6 +319,7 @@ function renderApps(apps) {
             return;
           }
           msg.textContent = 'Enregistré, recharge la page pour voir les valeurs mises à jour.';
+          document.getElementById('save-btn').textContent = 'Mettre à jour';
         }
       </script>
     </body></html>`;

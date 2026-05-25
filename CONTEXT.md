@@ -76,6 +76,7 @@ feedback-service/
 - `POST /admin/feedbacks/:id/redispatch` est limité aux conversations `failed` : il remet `pending`, remet les compteurs à zéro, puis le dispatcher la reprend au cycle suivant
 - `/api/admin/apps` expose les apps en JSON ; `POST /api/admin/apps` crée/édite une app et recalcule `configured` selon la présence d'un `agent`
 - `/admin/apps` affiche le tableau des apps + un formulaire simple de configuration, avec badge visible `⚠ à configurer` quand `configured=0`
+- Chaque ligne de `/admin/apps` propose désormais un bouton `Éditer` qui pré-remplit immédiatement le formulaire du bas (édition rapide inline, sans nouvelle page)
 - Le tableau `apps` wrappe désormais `ticket_url` et garde la colonne `État` visible sans scroll horizontal sur un écran standard
 - `public/test.html` ne met plus `data-source` en dur : la page résout la source via `?source=<slug>` + `/api/admin/apps`, puis injecte dynamiquement le widget avec `data-source` et `data-app-name`
 - `public/test.html` affiche un sélecteur `Application cible`, recharge la page sur `?source=<slug>` au changement, et expose un lien discret `← Admin` vers `/admin/feedbacks`
