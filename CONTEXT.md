@@ -28,7 +28,7 @@ feedback-service/
     server.js        — bootstrap Express + CORS + health endpoint enrichi DB + API chat + API submit + dashboard admin feedbacks + admin apps + service statique widget + planification dispatch
     db.js            — accès SQLite, migrations conversations/messages + table `apps`, helpers CRUD + file de dispatch locale
     llm.js           — relais Groq (OpenAI-compatible), prompt de cadrage, fallback modèles, dégradation propre
-    dispatcher.js    — drain asynchrone des conversations `pending/failed` vers les backlogs agents
+    dispatcher.js    — drain asynchrone des conversations `pending/failed` vers les backlogs agents, payload unifié Candy/Sandy
     anthropic.js     — ancien placeholder T3, désormais inutilisé
     routing.js       — accès au routing via `getRoute(slug)` / `listApps()` depuis SQLite
   public/
@@ -50,6 +50,7 @@ feedback-service/
 - `listApps()` / `getApp()` / `discoverApp()` / `upsertApp()` vivent dans `src/db.js`; `routing.js` ne contient plus de mapping statique
 - Une source inconnue n'est plus rejetée au dispatch : elle est auto-créée dans `apps` avec `configured=0`, sans destination, et le feedback reste `pending` tant qu'un dev n'est pas assigné
 - Une source avec `skip=1` est consommée par le dispatcher en `dispatch_status='skipped'` et ne crée jamais de ticket backlog
+- Le dispatcher envoie désormais un payload unifié à Candy ET Sandy : `title`, `description`, `priority`, `mission`, `lot`, `wave`, `createdBy`
 - Le widget statique est servi sous `/widget/*` avec `Cache-Control: public, max-age=300`
 - Les fichiers JS widget forcent `Content-Type: application/javascript; charset=utf-8`
 - Le widget utilise `document.currentScript` avec fallback `querySelector('script[src*="feedback-widget.js"]')`
@@ -69,6 +70,8 @@ feedback-service/
 - Chaque ligne de `/admin/feedbacks` pointe vers `/admin/feedbacks/:id`
 - `/admin/feedbacks/:id` affiche l'échange complet, la spec soumise (`submit_spec`) et l'état ticket enrichi si disponible
 - Pour les lignes `envoyé`, la liste et le détail tentent de lire le ticket agent courant et affichent son statut brut (`open`, `resolved`, `http 404`, `unreachable`, etc.) sans jamais casser la page
+- Pour les lignes `failed`, la liste montre l'erreur complète en rouge + compteur `tentatives/5`, et la vue détail affiche un bouton `Re-poster`
+- `POST /admin/feedbacks/:id/redispatch` est limité aux conversations `failed` : il remet `pending`, remet les compteurs à zéro, puis le dispatcher la reprend au cycle suivant
 - `/api/admin/apps` expose les apps en JSON ; `POST /api/admin/apps` crée/édite une app et recalcule `configured` selon la présence d'un `agent`
 - `/admin/apps` affiche le tableau des apps + un formulaire simple de configuration, avec badge visible `⚠ à configurer` quand `configured=0`
 - `public/test.html` doit toujours pointer vers `data-source="demo"` pour éviter toute pollution du backlog Candy pendant les validations widget
@@ -77,6 +80,6 @@ feedback-service/
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #233 — affichage du nom d'application dans l'entête du widget
-- **Etat courant spécifique :** l'entête du widget affiche désormais `Application : <nom>` via `data-app-name` ou, à défaut, via `data-source`; validation visuelle faite sur `/widget/test.html` avec la source `demo`
-- **Prochaine étape :** #234 — dispatch robuste (payload unifié, erreur visible, re-post manuel)
+- **Dernier ticket :** #234 — dispatch robuste (payload unifié, erreur visible, re-post manuel)
+- **Etat courant spécifique :** Candy accepte le payload unifié avec `mission/lot/wave` sans rejet; les erreurs de dispatch sont visibles dans `/admin/feedbacks`; une conversation `failed` peut être remise en `pending` via `POST /admin/feedbacks/:id/redispatch` puis repartir sans duplication des `sent`
+- **Prochaine étape :** #235 — amélioration admin `apps` (édition assistée / UX) ou #236 — enrichissement transcript + images + dedup

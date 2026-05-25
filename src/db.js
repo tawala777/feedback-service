@@ -135,6 +135,12 @@ function markDispatchSkipped({ conversationId }) {
     .run(Date.now(), conversationId);
 }
 
+function requeueDispatch(conversationId) {
+  db.prepare(`UPDATE conversations
+              SET dispatch_status='pending', dispatch_attempts=0, last_dispatch_error=NULL
+              WHERE id=?`).run(conversationId);
+}
+
 function listApps() {
   return db.prepare('SELECT * FROM apps ORDER BY configured ASC, slug ASC').all();
 }
@@ -190,6 +196,7 @@ module.exports = {
   markDispatched,
   markDispatchFailed,
   markDispatchSkipped,
+  requeueDispatch,
   listApps,
   getApp,
   discoverApp,

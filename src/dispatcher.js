@@ -4,22 +4,14 @@ const db = require('./db');
 const MAX_ATTEMPTS = 5;
 
 function buildPayload(route, source, spec) {
-  if (route.agent === 'sandy') {
-    return {
-      title: spec.title,
-      description: `${spec.description}\n\n---\n*Soumis via feedback-service depuis ${source}*`,
-      priority: spec.priority || 'medium',
-      mission: route.mission,
-      lot: route.lot,
-      wave: route.wave,
-      createdBy: 'feedback-service'
-    };
-  }
-
   return {
     title: `[${source}] ${spec.title}`,
-    description: `${spec.description}\n\n---\n*Soumis via feedback-service*`,
-    priority: spec.priority || 'medium'
+    description: `${spec.description}\n\n---\n*Soumis via feedback-service depuis ${source}*`,
+    priority: spec.priority || 'medium',
+    mission: route.mission,
+    lot: route.lot,
+    wave: route.wave,
+    createdBy: 'feedback-service'
   };
 }
 

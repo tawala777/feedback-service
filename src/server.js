@@ -19,6 +19,8 @@ app.use(cors({ origin: ORIGINS }));
 
 const LLM_DOWN_MESSAGE = 'Le service de cadrage est momentanément indisponible. Réessaie dans un instant.';
 
+const MAX_DISPATCH_ATTEMPTS = 5;
+
 function dispatchLabel(c) {
   if (!c.dispatch_status) return c.finalized_at ? 'finalisé' : 'draft';
   return { pending: 'en file', failed: 'échec (retry)', sent: 'envoyé' }[c.dispatch_status] || c.dispatch_status;
@@ -37,7 +39,7 @@ function ticketBlock(c) {
     return `Envoyé → <b>${esc(c.ticket_destination)}</b>${c.agent_ticket_status ? ` · statut dev : <b>${esc(c.agent_ticket_status)}</b>` : ''}`;
   }
   if (c.dispatch_status === 'failed') {
-    return `Échec dispatch : <code>${esc(c.last_dispatch_error)}</code> (retries: ${c.dispatch_attempts || 0})`;
+    return `Échec dispatch : <code>${esc(c.last_dispatch_error)}</code> (tentatives : ${c.dispatch_attempts || 0}/${MAX_DISPATCH_ATTEMPTS})`;
   }
   return esc(c.dispatch_status || 'draft');
 }
@@ -50,7 +52,9 @@ function renderDashboard(conversations) {
     const preview = esc((c.first_user_message || '').slice(0, 100));
     const ticketCell = (c.dispatch_status === 'sent' && c.ticket_destination)
       ? `${esc(c.ticket_destination)}${c.agent_ticket_status ? ` <small>(${esc(c.agent_ticket_status)})</small>` : ''}`
-      : (c.dispatch_status === 'failed' ? `<small title="${esc(c.last_dispatch_error)}">${esc((c.last_dispatch_error || '').slice(0, 40))}…</small>` : '—');
+      : (c.dispatch_status === 'failed'
+          ? `<div style="color:#b91c1c;font-size:13px;line-height:1.45"><b>${c.dispatch_attempts || 0}/${MAX_DISPATCH_ATTEMPTS}</b> · ${esc(c.last_dispatch_error || 'erreur inconnue')}</div>`
+          : '—');
     return `<tr>
       <td><a href="/admin/feedbacks/${c.id}">${date}</a></td>
       <td><code>${esc(c.source)}</code></td>
@@ -104,6 +108,13 @@ function renderDetail(conv, messages, spec) {
       <tr><th>Description</th><td><pre>${esc(spec.description)}</pre></td></tr>
     </table>` : '<p><i>Pas encore de spec soumise (conversation non finalisée).</i></p>';
 
+  const failedBlock = conv.dispatch_status === 'failed' ? `
+    <div class="err"><b>Dernière erreur de dispatch</b>\n${esc(conv.last_dispatch_error || 'erreur inconnue')}\n\nTentatives : ${conv.dispatch_attempts || 0}/${MAX_DISPATCH_ATTEMPTS}</div>
+    <form method="post" action="/admin/feedbacks/${conv.id}/redispatch" onsubmit="event.preventDefault(); redispatch(this.action, this.querySelector('button'));">
+      <button class="btn" type="submit">Re-poster</button>
+      <span id="redispatch-msg" style="margin-left:10px;color:#6b7280"></span>
+    </form>` : '';
+
   return `<!DOCTYPE html><html lang="fr"><head>
     <meta charset="UTF-8"><title>Feedback ${esc(conv.id)}</title>
     <style>
@@ -117,6 +128,9 @@ function renderDetail(conv, messages, spec) {
       .msg.assistant { background:#f3f4f6; }
       .msg .meta { font-size:12px; color:#6b7280; margin-bottom:4px; }
       .msg .body { white-space:pre-wrap; }
+      .err { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; padding:10px 12px; border-radius:8px; margin:12px 0; white-space:pre-wrap; }
+      .btn { background:#2563eb; color:#fff; border:0; padding:10px 14px; border-radius:6px; cursor:pointer; }
+      .btn[disabled] { opacity:.6; cursor:not-allowed; }
       table.kv { border-collapse:collapse; width:100%; font-size:14px; }
       table.kv th { text-align:left; vertical-align:top; padding:6px 12px; width:120px; color:#6b7280; }
       table.kv td { padding:6px 12px; }
@@ -130,9 +144,24 @@ function renderDetail(conv, messages, spec) {
       <b>Créée</b> : ${dt(conv.started_at)} &nbsp;|&nbsp; <b>Finalisée</b> : ${dt(conv.finalized_at)} &nbsp;|&nbsp; <b>Dispatchée</b> : ${dt(conv.dispatched_at)}<br>
       <b>Ticket</b> : ${ticketBlock(conv)}
     </div>
+    ${failedBlock}
     <h2>Échange</h2>
     ${msgs || '<p><i>Aucun message.</i></p>'}
     ${specBlock}
+    <script>
+      async function redispatch(url, btn) {
+        btn.disabled = true;
+        const msg = document.getElementById('redispatch-msg');
+        const resp = await fetch(url, { method: 'POST' });
+        if (!resp.ok) {
+          const data = await resp.json().catch(() => ({}));
+          msg.textContent = data.error || ('HTTP ' + resp.status);
+          btn.disabled = false;
+          return;
+        }
+        location.reload();
+      }
+    </script>
   </body></html>`;
 }
 
@@ -348,6 +377,16 @@ app.get('/admin/feedbacks/:id', async (req, res) => {
 
   await enrichAgentTicketStatus(conv);
   res.send(renderDetail(conv, messages, spec));
+});
+
+app.post('/admin/feedbacks/:id/redispatch', (req, res) => {
+  const conv = dbModule.db.prepare('SELECT id, dispatch_status FROM conversations WHERE id=?').get(req.params.id);
+  if (!conv) return res.status(404).json({ error: 'conversation introuvable' });
+  if (conv.dispatch_status !== 'failed') {
+    return res.status(409).json({ error: `re-post autorise seulement sur \'failed\' (etat actuel: ${conv.dispatch_status})` });
+  }
+  dbModule.requeueDispatch(conv.id);
+  res.json({ ok: true });
 });
 
 app.get('/admin/apps', (req, res) => {
