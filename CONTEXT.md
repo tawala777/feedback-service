@@ -47,7 +47,7 @@ feedback-service/
 
 ## Etat courant
 
-- **Travail en cours :** ticket #214 sur `main`
+- **Travail en cours :** aucun
 - **Dernier ticket :** #214 — widget statique servi sous `/widget/feedback-widget.js` avec cache 5 min et CORS validé
 - **Etat courant spécifique :** `/widget/feedback-widget.js` répond en `200` avec `Content-Type: application/javascript; charset=utf-8` et `Cache-Control: public, max-age=300`; le préflight CORS vers `/api/feedback/chat` est OK pour `http://localhost:5200`
 - **Prochaine étape :** #217 — endpoint `/api/feedback/chat` v2 via Groq (`src/llm.js`) avec dégradation propre si le LLM est indisponible
