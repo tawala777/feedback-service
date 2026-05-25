@@ -25,9 +25,10 @@
 ```text
 feedback-service/
   src/
-    server.js        — bootstrap Express + CORS + health endpoint enrichi DB + service statique widget
+    server.js        — bootstrap Express + CORS + health endpoint enrichi DB + API chat + service statique widget
     db.js            — accès SQLite, migrations conversations/messages, helpers CRUD
-    anthropic.js     — placeholder T3 (relais Anthropic)
+    llm.js           — relais Groq (OpenAI-compatible), prompt de cadrage, fallback modèles, dégradation propre
+    anthropic.js     — ancien placeholder T3, désormais inutilisé
     routing.js       — placeholder T4 (routing destinations)
   public/
     feedback-widget.js — placeholder T5 servi statiquement, widget complet prévu en T6
@@ -43,11 +44,14 @@ feedback-service/
 - SQLite en mode WAL
 - Le widget statique est servi sous `/widget/*` avec `Cache-Control: public, max-age=300`
 - Les fichiers JS widget forcent `Content-Type: application/javascript; charset=utf-8`
+- LLM = Groq via `openai` pointé sur `https://api.groq.com/openai/v1`
+- Modèles Groq essayés dans l'ordre : `llama-3.3-70b-versatile`, `llama-3.1-70b-versatile`, `mixtral-8x7b-32768`
+- Si Groq est indisponible, `/api/feedback/chat` répond `200` avec message de réessai et `readyForSubmit=false` (jamais de faux cadrage)
 - PM2 process name: `feedback-service`
 
 ## Etat courant
 
-- **Travail en cours :** aucun
-- **Dernier ticket :** #214 — widget statique servi sous `/widget/feedback-widget.js` avec cache 5 min et CORS validé
-- **Etat courant spécifique :** `/widget/feedback-widget.js` répond en `200` avec `Content-Type: application/javascript; charset=utf-8` et `Cache-Control: public, max-age=300`; le préflight CORS vers `/api/feedback/chat` est OK pour `http://localhost:5200`
-- **Prochaine étape :** #217 — endpoint `/api/feedback/chat` v2 via Groq (`src/llm.js`) avec dégradation propre si le LLM est indisponible
+- **Travail en cours :** ticket #217 sur `main`
+- **Dernier ticket :** #217 — endpoint `/api/feedback/chat` v2 via Groq avec prompt de cadrage et `submitSpec`
+- **Etat courant spécifique :** `/api/feedback/chat` crée/reprend une conversation, persiste les messages user/assistant, interroge Groq via `src/llm.js`, retourne `readyForSubmit` + `submitSpec` quand `[READY_FOR_SUBMIT]` est présent, et dégrade proprement avec message de réessai si le LLM est indisponible
+- **Prochaine étape :** #218 — endpoint `/api/feedback/submit` v2 (persistance locale + mise en file dispatch, zéro réseau)
