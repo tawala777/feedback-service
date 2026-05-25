@@ -108,6 +108,9 @@
       box-shadow: 0 10px 20px rgba(5, 150, 105, 0.2);
     }
     .fb-submit-btn:disabled { opacity: .65; cursor: not-allowed; box-shadow: none; }
+    .fb-attach-list { padding: 0 16px 10px; background:#fff; display:none; gap:8px; flex-wrap:wrap; }
+    .fb-attach-list.show { display:flex; }
+    .fb-attach-chip { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:999px; padding:4px 10px; font-size:12px; }
     .fb-input-area {
       border-top: 1px solid var(--fb-border); padding: 14px 16px; background: #fff; display: flex; gap: 10px; align-items: flex-end;
     }
@@ -121,6 +124,12 @@
       font-size: 14px; min-height: 42px;
     }
     .fb-input::placeholder { color: #94a3b8; }
+    .fb-action-stack { display:flex; gap:10px; }
+    .fb-attach {
+      min-width: 52px; border:1px solid var(--fb-border); border-radius: 14px; background:#fff; color: var(--fb-text-soft);
+      padding: 12px 14px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;
+    }
+    .fb-attach:hover { background:#f8fafc; color:var(--fb-text); }
     .fb-send {
       min-width: 108px; border: 0; border-radius: 14px; background: var(--fb-primary); color: #fff;
       padding: 12px 14px; font-weight: 600; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; justify-content: center;
@@ -189,12 +198,17 @@
         <p class="fb-submit-copy">Le cadrage est prêt. Tu peux maintenant envoyer le ticket à l’équipe.</p>
         <button class="fb-submit-btn" type="button">Envoyer le ticket</button>
       </div>
+      <div class="fb-attach-list"></div>
       <div class="fb-input-area">
         <div class="fb-input-wrap">
           <label class="fb-input-label" for="fb-input">Ton message</label>
           <textarea id="fb-input" class="fb-input" rows="2" placeholder="Décris ton bug ou ton besoin..."></textarea>
         </div>
-        <button class="fb-send" type="button">${sendIcon}<span>Envoyer</span></button>
+        <input class="fb-file" type="file" accept="image/*" hidden>
+        <div class="fb-action-stack">
+          <button class="fb-attach" type="button" title="Joindre une image">📎</button>
+          <button class="fb-send" type="button">${sendIcon}<span>Envoyer</span></button>
+        </div>
       </div>
     </div>`;
   root.appendChild(overlay);
@@ -203,6 +217,9 @@
   const userEl = overlay.querySelector('.fb-user-input');
   const inputEl = overlay.querySelector('.fb-input');
   const sendBtn = overlay.querySelector('.fb-send');
+  const attachBtn = overlay.querySelector('.fb-attach');
+  const fileEl = overlay.querySelector('.fb-file');
+  const attachListEl = overlay.querySelector('.fb-attach-list');
   const submitBar = overlay.querySelector('.fb-submit-bar');
   const submitBtn = overlay.querySelector('.fb-submit-btn');
   const INTRO_MESSAGE = 'Décris ton bug ou ton amélioration. Quelques questions vont suivre pour cadrer proprement le ticket.';
@@ -232,14 +249,43 @@
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
+  function showAttachment(name) {
+    const chip = document.createElement('div');
+    chip.className = 'fb-attach-chip';
+    chip.textContent = '📷 ' + name;
+    attachListEl.appendChild(chip);
+    attachListEl.classList.add('show');
+  }
+
+  async function uploadFiles(files) {
+    for (const file of Array.from(files || [])) {
+      const fd = new FormData();
+      fd.append('image', file);
+      fd.append('source', SOURCE);
+      if (conversationId) fd.append('conversationId', conversationId);
+      const userId = currentUserId();
+      if (userId) fd.append('userId', userId);
+      const resp = await fetch(`${SERVICE_URL}/api/feedback/upload`, { method: 'POST', body: fd });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      conversationId = data.conversationId;
+      showAttachment(data.attachment.filename);
+      appendMsg('system', `Image jointe : ${data.attachment.filename}`);
+    }
+  }
+
   function resetWidgetState(successMessage) {
     conversationId = null;
     submitBar.classList.remove('show');
     submitBtn.disabled = false;
     sendBtn.disabled = false;
+    attachBtn.disabled = false;
     inputEl.disabled = false;
     userEl.disabled = false;
     inputEl.value = '';
+    fileEl.value = '';
+    attachListEl.innerHTML = '';
+    attachListEl.classList.remove('show');
     userEl.value = safeGetStoredUser() || USER_ID || '';
     messagesEl.innerHTML = '';
     if (successMessage) appendMsg('system', successMessage);
@@ -288,6 +334,33 @@
       sendBtn.disabled = false;
     }
   }
+
+  attachBtn.onclick = () => fileEl.click();
+  fileEl.addEventListener('change', async () => {
+    if (!fileEl.files.length) return;
+    try {
+      attachBtn.disabled = true;
+      await uploadFiles(fileEl.files);
+      fileEl.value = '';
+    } catch (err) {
+      appendMsg('system', `Erreur upload image : ${err.message}`);
+    } finally {
+      attachBtn.disabled = false;
+    }
+  });
+  inputEl.addEventListener('paste', async (e) => {
+    const files = Array.from(e.clipboardData?.files || []).filter((f) => f.type && f.type.startsWith('image/'));
+    if (!files.length) return;
+    e.preventDefault();
+    try {
+      attachBtn.disabled = true;
+      await uploadFiles(files);
+    } catch (err) {
+      appendMsg('system', `Erreur upload image : ${err.message}`);
+    } finally {
+      attachBtn.disabled = false;
+    }
+  });
 
   sendBtn.onclick = send;
   inputEl.addEventListener('keydown', (e) => {

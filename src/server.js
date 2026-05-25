@@ -1,7 +1,9 @@
 require('dotenv').config();
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
+const multer = require('multer');
 const dbModule = require('./db');
 const { getRoute } = require('./routing');
 const { chat, extractSubmitJson } = require('./llm');
@@ -9,6 +11,20 @@ const { runDispatch } = require('./dispatcher');
 
 const app = express();
 const PORT = process.env.PORT || 4400;
+const UPLOAD_DIR = path.join(__dirname, '..', 'public', 'uploads', 'feedback');
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname || '') || '.bin';
+      const base = path.basename(file.originalname || 'upload', ext).replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 40) || 'upload';
+      cb(null, `${Date.now()}-${base}${ext}`);
+    }
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => file.mimetype.startsWith('image/') ? cb(null, true) : cb(new Error('image only'))
+});
 const ORIGINS = (process.env.CORS_ORIGINS || '')
   .split(',')
   .map((s) => s.trim())
@@ -131,6 +147,10 @@ function renderDetail(conv, messages, spec) {
       <tr><th>Description</th><td><pre>${esc(spec.description)}</pre></td></tr>
     </table>` : '<p><i>Pas encore de spec soumise (conversation non finalisée).</i></p>';
 
+  const attachmentBlock = (conv.attachments || []).length ? `
+    <h2>Captures</h2>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px;">${conv.attachments.map((a) => `<a href="${esc(a.public_url)}" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;text-decoration:none;color:#334155;"><img src="${esc(a.public_url)}" alt="${esc(a.filename)}" style="max-width:180px;max-height:140px;border:1px solid #e5e7eb;border-radius:8px;display:block;background:#fff;object-fit:contain"><small>${esc(a.filename)}</small></a>`).join('')}</div>` : '';
+
   const failedBlock = conv.dispatch_status === 'failed' ? `
     <div class="err"><b>Dernière erreur de dispatch</b>\n${esc(conv.last_dispatch_error || 'erreur inconnue')}\n\nTentatives : ${conv.dispatch_attempts || 0}/${MAX_DISPATCH_ATTEMPTS}</div>
     <form method="post" action="/admin/feedbacks/${conv.id}/redispatch" onsubmit="event.preventDefault(); redispatch(this.action, this.querySelector('button'));">
@@ -171,6 +191,7 @@ function renderDetail(conv, messages, spec) {
       <b>Créée</b> : ${dt(conv.started_at)} &nbsp;|&nbsp; <b>Finalisée</b> : ${dt(conv.finalized_at)} &nbsp;|&nbsp; <b>Dispatchée</b> : ${dt(conv.dispatched_at)}<br>
       <b>Ticket</b> : ${ticketBlock(conv)}
     </div>
+    ${attachmentBlock}
     ${failedBlock}
     <h2>Échange</h2>
     ${msgs || '<p><i>Aucun message.</i></p>'}
@@ -380,6 +401,30 @@ app.post('/api/feedback/chat', async (req, res) => {
   }
 });
 
+app.post('/api/feedback/upload', upload.single('image'), (req, res) => {
+  try {
+    const { conversationId, source, userId } = req.body;
+    if (!source) return res.status(400).json({ error: 'source required' });
+    if (!req.file) return res.status(400).json({ error: 'image required' });
+    let convId = conversationId;
+    if (!convId) convId = dbModule.createConversation({ source, userId: userId && String(userId).trim() ? String(userId).trim() : null });
+    else if (userId && String(userId).trim()) dbModule.setConversationUser(convId, String(userId).trim());
+    const publicUrl = `/uploads/feedback/${req.file.filename}`;
+    dbModule.addAttachment({
+      conversationId: convId,
+      filename: req.file.originalname || req.file.filename,
+      mimeType: req.file.mimetype,
+      fileSize: req.file.size,
+      diskPath: req.file.path,
+      publicUrl
+    });
+    res.json({ conversationId: convId, attachment: { filename: req.file.originalname || req.file.filename, publicUrl } });
+  } catch (err) {
+    console.error('upload error', err);
+    return res.status(500).json({ error: 'upload error', detail: err.message });
+  }
+});
+
 app.post('/api/feedback/submit', (req, res) => {
   try {
     const { conversationId, userId } = req.body;
@@ -446,6 +491,7 @@ app.get('/admin/feedbacks/:id', async (req, res) => {
   const messages = dbModule.db.prepare(
     'SELECT role, content, created_at FROM messages WHERE conversation_id = ? ORDER BY id ASC'
   ).all(conv.id);
+  conv.attachments = dbModule.listAttachments(conv.id);
 
   let spec = null;
   if (conv.submit_spec) {
@@ -469,6 +515,8 @@ app.post('/admin/feedbacks/:id/redispatch', (req, res) => {
 app.get('/admin/apps', (req, res) => {
   res.send(renderApps(dbModule.listApps()));
 });
+
+app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
 
 app.use('/widget', express.static(path.join(__dirname, '..', 'public'), {
   maxAge: '5m',

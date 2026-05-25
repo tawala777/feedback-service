@@ -26,7 +26,7 @@
 feedback-service/
   src/
     server.js        — bootstrap Express + CORS + health endpoint enrichi DB + API chat + API submit + dashboard admin feedbacks + admin apps + service statique widget + planification dispatch
-    db.js            — accès SQLite, migrations conversations/messages + table `apps`, helpers CRUD + file de dispatch locale
+    db.js            — accès SQLite, migrations conversations/messages + table `apps` + table `attachments`, helpers CRUD + file de dispatch locale
     llm.js           — relais Groq (OpenAI-compatible), prompt de cadrage, fallback modèles, dégradation propre
     dispatcher.js    — drain asynchrone des conversations `pending/failed` vers les backlogs agents, payload unifié Candy/Sandy
     anthropic.js     — ancien placeholder T3, désormais inutilisé
@@ -58,6 +58,7 @@ feedback-service/
 - Le widget utilise `document.currentScript` avec fallback `querySelector('script[src*="feedback-widget.js"]')`
 - Le header du widget affiche explicitement le nom de l'application : `data-app-name` si fourni, sinon fallback sur `data-source`
 - Le widget expose un champ `Utilisateur` (optionnel) persisté en `localStorage` sous `fb-user`, renvoyé à `/api/feedback/chat` et `/api/feedback/submit`, puis affiché dans la colonne `User` de l'admin
+- Le widget supporte aussi les images : bouton `📎` (fichier) + collage presse-papier image dans le textarea, upload via `POST /api/feedback/upload`, stockage disque sous `public/uploads/feedback/`
 - Charte widget actuelle : palette bleu nuit / bleu vif / neutres froids, bouton flottant circulaire avec icône bulle SVG, header de modale avec tuile icône, CTA primaires en dégradé, bulles user bleues et assistant blanches bordées
 - Le widget soumet le chat vers `/api/feedback/chat` puis, quand `readyForSubmit=true`, affiche un bouton "Envoyer le ticket" qui appelle `/api/feedback/submit`
 - Après submit réussi, le widget se réinitialise immédiatement : nouvelle `conversationId=null`, messages réinitialisés, champs re-réactivés, bouton submit masqué, et confirmation visible avant un nouveau cycle
@@ -72,7 +73,7 @@ feedback-service/
 - Une barre de navigation commune `Feedbacks | Apps` est rendue en haut de `/admin/feedbacks`, `/admin/feedbacks/:id` et `/admin/apps`, avec mise en évidence de la page courante
 - `/admin/feedbacks` affiche jusqu'à 200 conversations avec états : `draft`, `finalisé`, `en file`, `échec (retry)`, `envoyé`
 - Chaque ligne de `/admin/feedbacks` pointe vers `/admin/feedbacks/:id`
-- `/admin/feedbacks/:id` affiche l'échange complet, la spec soumise (`submit_spec`) et l'état ticket enrichi si disponible
+- `/admin/feedbacks/:id` affiche l'échange complet, les captures jointes (`attachments`), la spec soumise (`submit_spec`) et l'état ticket enrichi si disponible
 - Pour les lignes `envoyé`, la liste et le détail tentent de lire le ticket agent courant, affichent son statut brut (`open`, `resolved`, `http 404`, `unreachable`, etc.) et rendent `ticket_destination` cliquable vers l'endpoint ticket correspondant
 - Pour les lignes `failed`, la liste montre l'erreur complète en rouge + compteur `tentatives/5`, et la vue détail affiche un bouton `Re-poster`
 - `POST /admin/feedbacks/:id/redispatch` est limité aux conversations `failed` : il remet `pending`, remet les compteurs à zéro, puis le dispatcher la reprend au cycle suivant
