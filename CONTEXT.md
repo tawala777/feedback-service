@@ -49,6 +49,7 @@ feedback-service/
 - Le widget utilise `document.currentScript` avec fallback `querySelector('script[src*="feedback-widget.js"]')`
 - Charte widget actuelle : palette bleu nuit / bleu vif / neutres froids, bouton flottant circulaire avec icône bulle SVG, header de modale avec tuile icône, CTA primaires en dégradé, bulles user bleues et assistant blanches bordées
 - Le widget soumet le chat vers `/api/feedback/chat` puis, quand `readyForSubmit=true`, affiche un bouton "Envoyer le ticket" qui appelle `/api/feedback/submit`
+- Après submit réussi, le widget se réinitialise immédiatement : nouvelle `conversationId=null`, messages réinitialisés, champs re-réactivés, bouton submit masqué, et confirmation visible avant un nouveau cycle
 - Après submit réussi, le widget affiche seulement une confirmation (`✓ Feedback enregistré, merci.`) — jamais d'ID de ticket
 - LLM = Groq via `openai` pointé sur `https://api.groq.com/openai/v1`
 - Modèles Groq essayés dans l'ordre : `llama-3.3-70b-versatile`, `llama-3.1-70b-versatile`, `mixtral-8x7b-32768`
@@ -64,6 +65,6 @@ feedback-service/
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #223 — charte visuelle du widget unifiée (titre, popups, icônes, CTA)
-- **Etat courant spécifique :** le widget servi par `/widget/feedback-widget.js` a désormais un rendu plus professionnel (bouton flottant premium, header illustré, modale plus sobre, popups harmonisées, icônes SVG cohérentes) validé sur `/widget/test.html`
+- **Dernier ticket :** #224 — réinitialisation du widget après submit sans reload
+- **Etat courant spécifique :** après submit réussi, le widget reste immédiatement réutilisable sans reload : confirmation visible, input réactivé, `conversationId` remise à `null`, historique remplacé par un nouveau prompt de départ; validation navigateur OK sur `/widget/test.html`
 - **Prochaine étape :** aucun ticket feedback-service ouvert

@@ -182,6 +182,8 @@
   const sendBtn = overlay.querySelector('.fb-send');
   const submitBar = overlay.querySelector('.fb-submit-bar');
   const submitBtn = overlay.querySelector('.fb-submit-btn');
+  const INTRO_MESSAGE = 'Décris ton bug ou ton amélioration. Quelques questions vont suivre pour cadrer proprement le ticket.';
+  const SUCCESS_MESSAGE = '✓ Feedback enregistré, merci. Tu peux en soumettre un nouveau si besoin.';
 
   function appendMsg(role, content) {
     const div = document.createElement('div');
@@ -191,10 +193,22 @@
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
+  function resetWidgetState(successMessage) {
+    conversationId = null;
+    submitBar.classList.remove('show');
+    submitBtn.disabled = false;
+    sendBtn.disabled = false;
+    inputEl.disabled = false;
+    inputEl.value = '';
+    messagesEl.innerHTML = '';
+    if (successMessage) appendMsg('system', successMessage);
+    appendMsg('system', INTRO_MESSAGE);
+  }
+
   btn.onclick = () => {
     overlay.classList.add('open');
     if (messagesEl.children.length === 0) {
-      appendMsg('system', 'Décris ton bug ou ton amélioration. Quelques questions vont suivre pour cadrer proprement le ticket.');
+      appendMsg('system', INTRO_MESSAGE);
       inputEl.focus();
     }
   };
@@ -247,10 +261,8 @@
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       await resp.json();
-      appendMsg('system', '✓ Feedback enregistré, merci. Il sera transmis à l\'équipe.');
-      submitBar.classList.remove('show');
-      sendBtn.disabled = true;
-      inputEl.disabled = true;
+      resetWidgetState(SUCCESS_MESSAGE);
+      inputEl.focus();
     } catch (err) {
       appendMsg('system', `Erreur lors de l\'envoi : ${err.message}`);
       submitBtn.disabled = false;
