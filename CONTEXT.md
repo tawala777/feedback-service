@@ -66,6 +66,7 @@ feedback-service/
 - Colonnes de dispatch locales dans `conversations` : `submit_spec`, `dispatch_status`, `dispatch_attempts`, `last_dispatch_error`, `dispatched_at`
 - Le dispatcher tourne toutes les 2 minutes + un passage au démarrage du process via `runDispatch()`
 - Routing actuel : `bookingsExtApi`, `team-tracker`, `aam-website` -> Candy local (`http://localhost:4000/api/tickets`); `stats-v1` et `hotel-aggregator` -> Sandy via `SANDY_TICKETS_URL` (vide par défaut)
+- Une barre de navigation commune `Feedbacks | Apps` est rendue en haut de `/admin/feedbacks`, `/admin/feedbacks/:id` et `/admin/apps`, avec mise en évidence de la page courante
 - `/admin/feedbacks` affiche jusqu'à 200 conversations avec états : `draft`, `finalisé`, `en file`, `échec (retry)`, `envoyé`
 - Chaque ligne de `/admin/feedbacks` pointe vers `/admin/feedbacks/:id`
 - `/admin/feedbacks/:id` affiche l'échange complet, la spec soumise (`submit_spec`) et l'état ticket enrichi si disponible
@@ -74,14 +75,15 @@ feedback-service/
 - `POST /admin/feedbacks/:id/redispatch` est limité aux conversations `failed` : il remet `pending`, remet les compteurs à zéro, puis le dispatcher la reprend au cycle suivant
 - `/api/admin/apps` expose les apps en JSON ; `POST /api/admin/apps` crée/édite une app et recalcule `configured` selon la présence d'un `agent`
 - `/admin/apps` affiche le tableau des apps + un formulaire simple de configuration, avec badge visible `⚠ à configurer` quand `configured=0`
+- Le tableau `apps` wrappe désormais `ticket_url` et garde la colonne `État` visible sans scroll horizontal sur un écran standard
 - `public/test.html` ne met plus `data-source` en dur : la page résout la source via `?source=<slug>` + `/api/admin/apps`, puis injecte dynamiquement le widget avec `data-source` et `data-app-name`
-- `public/test.html` affiche un sélecteur `Application cible` et recharge la page sur `?source=<slug>` au changement, ce qui garantit un widget propre à chaque test
+- `public/test.html` affiche un sélecteur `Application cible`, recharge la page sur `?source=<slug>` au changement, et expose un lien discret `← Admin` vers `/admin/feedbacks`
 - Défaut de `public/test.html` : `demo`; choisir `bookingsExtApi` / `team-tracker` / `aam-website` crée un vrai ticket Candy, `stats-v1` / `hotel-aggregator` restent `pending` tant que Sandy n'est pas branché, `demo` finit en `skipped`
 - PM2 process name: `feedback-service`
 
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #239 — sélecteur de source sur `/widget/test.html`
-- **Etat courant spécifique :** `/widget/test.html` liste toutes les apps via `/api/admin/apps`, se pilote par `?source=<slug>`, injecte le widget dynamiquement avec la source active et permet donc de créer de vrais tickets depuis la page de test vers n'importe quelle app. Validation faite : `bookingsExtApi` -> ticket Candy réel `#243` puis supprimé ; `demo` -> `dispatch_status='skipped'` sans ticket.
-- **Prochaine étape :** #240 — amélioration admin `apps` (édition rapide) ou #241 — audit / nettoyage des tickets feedback-service
+- **Dernier ticket :** #240 — navigation admin commune + fix layout `/admin/apps`
+- **Etat courant spécifique :** les 3 pages admin utiles (`/admin/feedbacks`, `/admin/feedbacks/:id`, `/admin/apps`) sont maintenant navigables entre elles via une barre commune `Feedbacks | Apps`; `/widget/test.html` a un lien retour `← Admin`; le tableau `/admin/apps` wrappe `ticket_url` et garde la colonne `État` visible sur un écran standard
+- **Prochaine étape :** #241 — audit / nettoyage des tickets feedback-service

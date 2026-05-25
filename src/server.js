@@ -55,6 +55,13 @@ function ticketBlock(c) {
   return esc(c.dispatch_status || 'draft');
 }
 
+function renderNav(active) {
+  const item = (key, href, label) => active === key
+    ? `<strong>${label}</strong>`
+    : `<a href="${href}">${label}</a>`;
+  return `<nav class="topnav">${item('feedbacks', '/admin/feedbacks', 'Feedbacks')} <span class="sep">|</span> ${item('apps', '/admin/apps', 'Apps')}</nav>`;
+}
+
 function renderDashboard(conversations) {
   const rows = conversations.map((c) => {
     const date = dt(c.started_at);
@@ -81,6 +88,9 @@ function renderDashboard(conversations) {
     <meta charset="UTF-8"><title>Feedbacks — Admin</title>
     <style>
       body { font-family: system-ui, sans-serif; margin: 20px; color: #111; }
+      .topnav { margin-bottom: 14px; font-size: 14px; color:#475569; }
+      .topnav a { color: #2563eb; text-decoration: none; }
+      .topnav .sep { color:#94a3b8; margin:0 6px; }
       h1 { font-size: 20px; }
       table { border-collapse: collapse; width: 100%; font-size: 14px; }
       th, td { border-bottom: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; vertical-align: top; }
@@ -91,6 +101,7 @@ function renderDashboard(conversations) {
       a { color: #2563eb; text-decoration: none; }
       a:hover { text-decoration: underline; }
     </style></head><body>
+    ${renderNav('feedbacks')}
     <h1>Feedbacks — Admin</h1>
     <p class="count">${conversations.length} conversation(s)</p>
     <table>
@@ -131,6 +142,9 @@ function renderDetail(conv, messages, spec) {
     <meta charset="UTF-8"><title>Feedback ${esc(conv.id)}</title>
     <style>
       body { font-family: system-ui, sans-serif; margin: 20px; color: #111; max-width: 860px; }
+      .topnav { margin-bottom: 14px; font-size: 14px; color:#475569; }
+      .topnav a { color: #2563eb; text-decoration: none; }
+      .topnav .sep { color:#94a3b8; margin:0 6px; }
       a { color: #2563eb; text-decoration: none; }
       a:hover { text-decoration: underline; }
       .hdr { background:#f3f4f6; padding:12px 16px; border-radius:8px; margin-bottom:16px; font-size:14px; }
@@ -149,6 +163,7 @@ function renderDetail(conv, messages, spec) {
       pre { white-space:pre-wrap; background:#f9fafb; padding:8px; border-radius:6px; margin:0; }
       code { white-space:pre-wrap; background:#f9fafb; padding:2px 6px; border-radius:6px; }
     </style></head><body>
+    ${renderNav('feedbacks')}
     <p><a href="/admin/feedbacks">← Retour à la liste</a></p>
     <h1>Conversation ${esc(conv.id)}</h1>
     <div class="hdr">
@@ -184,7 +199,7 @@ function renderApps(apps) {
       <td><code>${esc(a.slug)}</code></td>
       <td>${esc(a.label)}</td>
       <td>${esc(a.agent) || '—'}</td>
-      <td>${esc(a.ticket_url) || '—'}</td>
+      <td class="url">${esc(a.ticket_url) || '—'}</td>
       <td>${esc(a.mission) || '—'}</td>
       <td>${a.lot ?? '—'}</td>
       <td>${a.wave ?? '—'}</td>
@@ -198,10 +213,15 @@ function renderApps(apps) {
     <meta charset="UTF-8"><title>Apps — Admin</title>
     <style>
       body { font-family: system-ui, sans-serif; margin: 20px; color: #111; }
+      .topnav { margin-bottom: 14px; font-size: 14px; color:#475569; }
+      .topnav a { color: #2563eb; text-decoration: none; }
+      .topnav .sep { color:#94a3b8; margin:0 6px; }
       h1,h2 { margin-bottom: 10px; }
-      table { border-collapse: collapse; width: 100%; font-size: 14px; margin-bottom: 28px; }
+      .table-wrap { width: 100%; overflow-x: auto; }
+      table { border-collapse: collapse; width: 100%; font-size: 14px; margin-bottom: 28px; table-layout: fixed; }
       th, td { border-bottom: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; vertical-align: top; }
       th { background: #f3f4f6; }
+      td.url, th.url { width: 230px; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
       tr:hover td { background: #fafafa; }
       code { background: #f3f4f6; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
       label { display:block; font-size:13px; color:#374151; margin-bottom:4px; }
@@ -212,12 +232,14 @@ function renderApps(apps) {
       button { background:#2563eb; color:#fff; border:0; padding:10px 16px; border-radius:6px; cursor:pointer; }
       a { color:#2563eb; text-decoration:none; }
     </style></head><body>
-      <p><a href="/admin/feedbacks">← Retour feedbacks</a></p>
+      ${renderNav('apps')}
       <h1>Apps — Admin</h1>
+      <div class="table-wrap">
       <table>
-        <thead><tr><th>Slug</th><th>Label</th><th>Agent</th><th>ticket_url</th><th>Mission</th><th>Lot</th><th>Wave</th><th>Skip</th><th>Active</th><th>État</th></tr></thead>
+        <thead><tr><th>Slug</th><th>Label</th><th>Agent</th><th class="url">ticket_url</th><th>Mission</th><th>Lot</th><th>Wave</th><th>Skip</th><th>Active</th><th>État</th></tr></thead>
         <tbody>${rows || '<tr><td colspan="10">Aucune app</td></tr>'}</tbody>
       </table>
+      </div>
       <h2>Créer / éditer une app</h2>
       <form method="post" action="/api/admin/apps" onsubmit="event.preventDefault(); submitApp(this);">
         <div class="grid">
