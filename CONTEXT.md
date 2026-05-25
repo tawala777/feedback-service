@@ -32,7 +32,8 @@ feedback-service/
     anthropic.js     — ancien placeholder T3, désormais inutilisé
     routing.js       — mapping source -> destination agent / URL / métadonnées Sandy
   public/
-    feedback-widget.js — placeholder T5 servi statiquement, widget complet prévu en T6
+    feedback-widget.js — widget flottant complet (modale chat + submit async)
+    test.html          — page locale de validation manuelle du widget
   data/              — stockage local SQLite (`conversations.db`)
 ```
 
@@ -45,6 +46,9 @@ feedback-service/
 - SQLite en mode WAL
 - Le widget statique est servi sous `/widget/*` avec `Cache-Control: public, max-age=300`
 - Les fichiers JS widget forcent `Content-Type: application/javascript; charset=utf-8`
+- Le widget utilise `document.currentScript` avec fallback `querySelector('script[src*="feedback-widget.js"]')`
+- Le widget soumet le chat vers `/api/feedback/chat` puis, quand `readyForSubmit=true`, affiche un bouton "Envoyer le ticket" qui appelle `/api/feedback/submit`
+- Après submit réussi, le widget affiche seulement une confirmation (`✓ Feedback enregistré, merci.`) — jamais d'ID de ticket
 - LLM = Groq via `openai` pointé sur `https://api.groq.com/openai/v1`
 - Modèles Groq essayés dans l'ordre : `llama-3.3-70b-versatile`, `llama-3.1-70b-versatile`, `mixtral-8x7b-32768`
 - Si Groq est indisponible, `/api/feedback/chat` répond `200` avec message de réessai et `readyForSubmit=false` (jamais de faux cadrage)
@@ -57,6 +61,6 @@ feedback-service/
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #219 — dispatcher asynchrone des conversations `pending/failed` vers les backlogs agents
-- **Etat courant spécifique :** une conversation locale `bookingsExtApi` en file est correctement dispatchée vers Candy local avec `dispatch_status='sent'`, `ticket_id` et `ticket_destination`; une conversation `stats-v1` reste `pending` sans erreur tant que `SANDY_TICKETS_URL` est vide
-- **Prochaine étape :** #220 — widget complet (bouton flottant + modale chat + submit async)
+- **Dernier ticket :** #220 — widget complet (bouton flottant + modale chat + submit async)
+- **Etat courant spécifique :** `/widget/test.html` charge le widget, affiche le bouton flottant, ouvre une modale de chat, révèle le bouton "Envoyer le ticket" quand `readyForSubmit=true`, puis affiche `✓ Feedback enregistré, merci.` après submit réussi; les données de test ont été nettoyées pour ne pas alimenter le dispatcher
+- **Prochaine étape :** #221 — dashboard admin `/admin/feedbacks`
