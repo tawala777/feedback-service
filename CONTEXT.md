@@ -51,6 +51,7 @@ feedback-service/
 - Une source inconnue n'est plus rejetée au dispatch : elle est auto-créée dans `apps` avec `configured=0`, sans destination, et le feedback reste `pending` tant qu'un dev n'est pas assigné
 - Une source avec `skip=1` est consommée par le dispatcher en `dispatch_status='skipped'` et ne crée jamais de ticket backlog
 - Le dispatcher envoie désormais un payload unifié à Candy ET Sandy : `title`, `description`, `priority`, `mission`, `lot`, `wave`, `createdBy`
+- La `description` dispatchée n'est plus un simple résumé : elle inclut aussi `Utilisateur déclaré`, `## Transcript complet` (tous les tours user/assistant) et `## Captures jointes` si des images existent
 - La `description` du ticket dispatché embarque désormais `Conversation + detail : <service>/admin/feedbacks/<conversationId>` puis un bloc `Conversation complete` contenant tous les messages `user`/`assistant` horodatés dans l'ordre
 - Le lien de détail injecté dans les tickets utilise `FEEDBACK_SERVICE_URL` ou `SERVICE_URL` si défini, sinon fallback `http://localhost:4400`
 - Le widget statique est servi sous `/widget/*` avec `Cache-Control: public, max-age=300`
