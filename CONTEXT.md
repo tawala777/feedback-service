@@ -53,7 +53,7 @@ feedback-service/
 
 ## Etat courant
 
-- **Travail en cours :** ticket #218 sur `main`
+- **Travail en cours :** aucun
 - **Dernier ticket :** #218 — `/api/feedback/submit` écrit la spec validée en file locale sans réseau
 - **Etat courant spécifique :** quand une conversation contient `[READY_FOR_SUBMIT]`, `/api/feedback/submit` pose `finalized_at`, sérialise `submit_spec` et marque `dispatch_status='pending'`; un submit prématuré renvoie `400`, un `conversationId` inconnu renvoie `404`
 - **Prochaine étape :** #219 — dispatcher asynchrone qui draine les conversations `pending` vers les backlogs Candy/Sandy
