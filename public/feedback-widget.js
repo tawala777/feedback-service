@@ -1,8 +1,7 @@
 (function() {
   'use strict';
 
-  const scriptTag = document.currentScript
-    || document.querySelector('script[src*="feedback-widget.js"]');
+  const scriptTag = document.currentScript || document.querySelector('script[src*="feedback-widget.js"]');
   const SOURCE = scriptTag.getAttribute('data-source') || 'unknown';
   const USER_ID = scriptTag.getAttribute('data-user-id') || null;
   const SERVICE_URL = scriptTag.src.replace(/\/widget\/[^/]+$/, '');
@@ -10,59 +9,173 @@
   let conversationId = null;
 
   const css = `
-    .fb-btn { position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px;
-      border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 24px;
-      cursor: pointer; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-    .fb-btn:hover { background: #1d4ed8; }
-    .fb-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none;
-      align-items: center; justify-content: center; z-index: 10000; }
+    .fb-root, .fb-root * { box-sizing: border-box; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    .fb-root {
+      --fb-primary: #1e40af;
+      --fb-primary-dark: #1e3a8a;
+      --fb-primary-soft: #dbeafe;
+      --fb-surface: #ffffff;
+      --fb-surface-soft: #f8fafc;
+      --fb-border: #dbe3ef;
+      --fb-text: #0f172a;
+      --fb-text-soft: #475569;
+      --fb-success: #047857;
+      --fb-success-soft: #ecfdf5;
+      --fb-warning: #92400e;
+      --fb-warning-soft: #fff7ed;
+      --fb-shadow: 0 20px 50px rgba(15, 23, 42, 0.22);
+      --fb-radius: 18px;
+    }
+    .fb-btn {
+      position: fixed; right: 24px; bottom: 24px; width: 62px; height: 62px; border-radius: 999px;
+      border: 0; background: linear-gradient(135deg, var(--fb-primary) 0%, #2563eb 100%); color: #fff;
+      cursor: pointer; z-index: 9999; display: inline-flex; align-items: center; justify-content: center;
+      box-shadow: 0 14px 30px rgba(37, 99, 235, 0.32); transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .fb-btn:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 18px 36px rgba(37, 99, 235, 0.38); }
+    .fb-btn:active { transform: translateY(0); }
+    .fb-btn svg { width: 28px; height: 28px; }
+    .fb-modal-overlay {
+      position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+      background: rgba(15, 23, 42, 0.45); backdrop-filter: blur(4px); z-index: 10000; padding: 20px;
+    }
     .fb-modal-overlay.open { display: flex; }
-    .fb-modal { background: #fff; width: 480px; max-width: 95vw; height: 600px; max-height: 90vh;
-      border-radius: 8px; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.3); overflow: hidden; }
-    .fb-header { padding: 12px 16px; background: #f3f4f6; border-bottom: 1px solid #e5e7eb;
-      display: flex; justify-content: space-between; align-items: center; }
-    .fb-header h3 { margin: 0; font-size: 16px; color: #111827; }
-    .fb-close { background: none; border: none; font-size: 22px; cursor: pointer; color: #6b7280; }
-    .fb-messages { flex: 1; overflow-y: auto; padding: 16px; }
-    .fb-msg { margin-bottom: 12px; padding: 8px 12px; border-radius: 8px; max-width: 85%; }
-    .fb-msg.user { background: #dbeafe; margin-left: auto; }
-    .fb-msg.assistant { background: #f3f4f6; margin-right: auto; white-space: pre-wrap; }
-    .fb-msg.system { background: #fef3c7; font-style: italic; font-size: 13px; }
-    .fb-input-area { border-top: 1px solid #e5e7eb; padding: 12px; display: flex; gap: 8px; }
-    .fb-input { flex: 1; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;
-      font-family: inherit; font-size: 14px; resize: none; }
-    .fb-send { background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
-    .fb-send:disabled { background: #9ca3af; cursor: not-allowed; }
-    .fb-submit-bar { padding: 12px 16px; background: #ecfdf5; border-top: 1px solid #d1fae5; display: none; }
+    .fb-modal {
+      width: min(560px, 100%); height: min(720px, 92vh); background: var(--fb-surface); color: var(--fb-text);
+      border: 1px solid rgba(255,255,255,.35); border-radius: 24px; box-shadow: var(--fb-shadow);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .fb-header {
+      padding: 18px 20px; background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
+      border-bottom: 1px solid var(--fb-border); display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
+    }
+    .fb-header-main { display: flex; gap: 14px; align-items: flex-start; min-width: 0; }
+    .fb-header-icon {
+      width: 42px; height: 42px; border-radius: 12px; background: var(--fb-primary); color: #fff;
+      display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+      box-shadow: 0 10px 18px rgba(30, 64, 175, 0.18);
+    }
+    .fb-header-icon svg { width: 20px; height: 20px; }
+    .fb-header-copy h3 { margin: 0 0 4px; font-size: 17px; line-height: 1.25; color: var(--fb-text); }
+    .fb-header-copy p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--fb-text-soft); }
+    .fb-close {
+      width: 36px; height: 36px; border-radius: 10px; border: 0; background: rgba(148, 163, 184, 0.12);
+      color: var(--fb-text-soft); cursor: pointer; font-size: 22px; line-height: 1; flex: 0 0 auto;
+    }
+    .fb-close:hover { background: rgba(148, 163, 184, 0.2); color: var(--fb-text); }
+    .fb-messages {
+      flex: 1; overflow-y: auto; padding: 18px; background:
+        radial-gradient(circle at top, rgba(219, 234, 254, 0.45), transparent 30%),
+        linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    }
+    .fb-msg { max-width: 88%; margin-bottom: 12px; padding: 11px 14px; border-radius: 16px; line-height: 1.5; font-size: 14px; }
+    .fb-msg.user {
+      margin-left: auto; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: #fff;
+      border-bottom-right-radius: 6px; box-shadow: 0 8px 18px rgba(37,99,235,.18);
+    }
+    .fb-msg.assistant {
+      margin-right: auto; background: #fff; color: var(--fb-text); border: 1px solid var(--fb-border);
+      border-bottom-left-radius: 6px; white-space: pre-wrap; box-shadow: 0 6px 16px rgba(15,23,42,.06);
+    }
+    .fb-msg.system {
+      margin-right: auto; background: var(--fb-warning-soft); color: var(--fb-warning); border: 1px solid #fed7aa;
+      font-size: 13px; font-style: normal;
+    }
+    .fb-submit-bar {
+      display: none; padding: 14px 16px; background: var(--fb-success-soft); border-top: 1px solid #bbf7d0;
+    }
     .fb-submit-bar.show { display: block; }
-    .fb-submit-btn { background: #059669; color: #fff; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; width: 100%; }
+    .fb-submit-copy { font-size: 12px; color: #065f46; margin: 0 0 10px; }
+    .fb-submit-btn {
+      width: 100%; border: 0; border-radius: 12px; background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      color: #fff; padding: 12px 16px; font-size: 14px; font-weight: 600; cursor: pointer;
+      box-shadow: 0 10px 20px rgba(5, 150, 105, 0.2);
+    }
+    .fb-submit-btn:disabled { opacity: .65; cursor: not-allowed; box-shadow: none; }
+    .fb-input-area {
+      border-top: 1px solid var(--fb-border); padding: 14px 16px; background: #fff; display: flex; gap: 10px; align-items: flex-end;
+    }
+    .fb-input-wrap {
+      flex: 1; border: 1px solid var(--fb-border); border-radius: 14px; background: var(--fb-surface-soft); padding: 10px 12px;
+      box-shadow: inset 0 1px 1px rgba(15,23,42,.03);
+    }
+    .fb-input-label { display: block; margin-bottom: 6px; font-size: 11px; color: var(--fb-text-soft); text-transform: uppercase; letter-spacing: .04em; }
+    .fb-input {
+      width: 100%; border: 0; background: transparent; resize: none; outline: none; color: var(--fb-text);
+      font-size: 14px; min-height: 42px;
+    }
+    .fb-input::placeholder { color: #94a3b8; }
+    .fb-send {
+      min-width: 108px; border: 0; border-radius: 14px; background: var(--fb-primary); color: #fff;
+      padding: 12px 14px; font-weight: 600; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; justify-content: center;
+    }
+    .fb-send svg { width: 16px; height: 16px; }
+    .fb-send:hover { background: var(--fb-primary-dark); }
+    .fb-send:disabled { background: #94a3b8; cursor: not-allowed; }
+    @media (max-width: 640px) {
+      .fb-btn { right: 16px; bottom: 16px; width: 56px; height: 56px; }
+      .fb-modal { width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
+      .fb-modal-overlay { padding: 0; }
+      .fb-input-area { flex-direction: column; align-items: stretch; }
+      .fb-send { width: 100%; }
+    }
   `;
+
   const style = document.createElement('style');
   style.textContent = css;
   document.head.appendChild(style);
 
+  const root = document.createElement('div');
+  root.className = 'fb-root';
+  document.body.appendChild(root);
+
+  const bubbleIcon = `
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M7 18.5c1.1.6 2.4 1 3.8 1H19a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10.5a2 2 0 0 0 2 2h1.2L7 22v-3.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+      <path d="M8 10h8M8 14h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>`;
+  const sendIcon = `
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 12 20 4l-4 16-4.5-5L4 12Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+      <path d="m11.5 15 4.5-4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>`;
+
   const btn = document.createElement('button');
   btn.className = 'fb-btn';
-  btn.innerHTML = '💬';
+  btn.type = 'button';
   btn.title = 'Signaler un bug ou une amélioration';
-  document.body.appendChild(btn);
+  btn.setAttribute('aria-label', 'Ouvrir le widget de feedback');
+  btn.innerHTML = bubbleIcon;
+  root.appendChild(btn);
 
   const overlay = document.createElement('div');
   overlay.className = 'fb-modal-overlay';
   overlay.innerHTML = `
-    <div class="fb-modal">
+    <div class="fb-modal" role="dialog" aria-modal="true" aria-labelledby="fb-title">
       <div class="fb-header">
-        <h3>Signaler un bug ou une amélioration</h3>
-        <button class="fb-close">×</button>
+        <div class="fb-header-main">
+          <div class="fb-header-icon">${bubbleIcon}</div>
+          <div class="fb-header-copy">
+            <h3 id="fb-title">Signaler un bug ou une amélioration</h3>
+            <p>Décris le besoin. Le widget t’aide à cadrer le ticket avant envoi.</p>
+          </div>
+        </div>
+        <button class="fb-close" type="button" aria-label="Fermer">×</button>
       </div>
       <div class="fb-messages"></div>
-      <div class="fb-submit-bar"><button class="fb-submit-btn">Envoyer le ticket</button></div>
+      <div class="fb-submit-bar">
+        <p class="fb-submit-copy">Le cadrage est prêt. Tu peux maintenant envoyer le ticket à l’équipe.</p>
+        <button class="fb-submit-btn" type="button">Envoyer le ticket</button>
+      </div>
       <div class="fb-input-area">
-        <textarea class="fb-input" rows="2" placeholder="Décris ton bug ou ton besoin..."></textarea>
-        <button class="fb-send">Envoyer</button>
+        <div class="fb-input-wrap">
+          <label class="fb-input-label" for="fb-input">Ton message</label>
+          <textarea id="fb-input" class="fb-input" rows="2" placeholder="Décris ton bug ou ton besoin..."></textarea>
+        </div>
+        <button class="fb-send" type="button">${sendIcon}<span>Envoyer</span></button>
       </div>
     </div>`;
-  document.body.appendChild(overlay);
+  root.appendChild(overlay);
 
   const messagesEl = overlay.querySelector('.fb-messages');
   const inputEl = overlay.querySelector('.fb-input');
@@ -81,10 +194,11 @@
   btn.onclick = () => {
     overlay.classList.add('open');
     if (messagesEl.children.length === 0) {
-      appendMsg('system', 'Décris ton bug ou ton amélioration. Quelques questions vont suivre pour cadrer.');
+      appendMsg('system', 'Décris ton bug ou ton amélioration. Quelques questions vont suivre pour cadrer proprement le ticket.');
       inputEl.focus();
     }
   };
+
   overlay.querySelector('.fb-close').onclick = () => overlay.classList.remove('open');
   overlay.onclick = (e) => { if (e.target === overlay) overlay.classList.remove('open'); };
   document.addEventListener('keydown', (e) => {
@@ -114,9 +228,13 @@
       sendBtn.disabled = false;
     }
   }
+
   sendBtn.onclick = send;
   inputEl.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
   });
 
   submitBtn.onclick = async () => {
