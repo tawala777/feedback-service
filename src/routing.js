@@ -1,9 +1,20 @@
-require('dotenv').config();
+const db = require('./db');
+
+function getRoute(slug) {
+  const a = db.getApp(slug);
+  if (!a || !a.active) return null;
+  return {
+    agent: a.agent,
+    url: a.ticket_url,
+    mission: a.mission,
+    lot: a.lot,
+    wave: a.wave,
+    skip: !!a.skip,
+    configured: !!a.configured
+  };
+}
 
 module.exports = {
-  'bookingsExtApi': { agent: 'candy', url: 'http://localhost:4000/api/tickets' },
-  'team-tracker': { agent: 'candy', url: 'http://localhost:4000/api/tickets' },
-  'aam-website': { agent: 'candy', url: 'http://localhost:4000/api/tickets' },
-  'stats-v1': { agent: 'sandy', url: process.env.SANDY_TICKETS_URL || null, mission: 'user-feedback', lot: 0, wave: 4 },
-  'hotel-aggregator': { agent: 'sandy', url: process.env.SANDY_TICKETS_URL || null, mission: 'user-feedback', lot: 0, wave: 4 }
+  getRoute,
+  listApps: db.listApps
 };

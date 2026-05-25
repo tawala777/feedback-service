@@ -1,4 +1,4 @@
-const ROUTING = require('./routing');
+const { getRoute } = require('./routing');
 const db = require('./db');
 
 const MAX_ATTEMPTS = 5;
@@ -24,9 +24,13 @@ function buildPayload(route, source, spec) {
 }
 
 async function dispatchOne(conv) {
-  const route = ROUTING[conv.source];
+  const route = getRoute(conv.source);
   if (!route) {
     db.markDispatchFailed({ conversationId: conv.id, error: `unknown source: ${conv.source}` });
+    return;
+  }
+  if (route.skip) {
+    db.markDispatchSkipped({ conversationId: conv.id });
     return;
   }
   if (!route.url) return;

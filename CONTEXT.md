@@ -26,11 +26,11 @@
 feedback-service/
   src/
     server.js        — bootstrap Express + CORS + health endpoint enrichi DB + API chat + API submit + dashboard admin liste+détail + service statique widget + planification dispatch
-    db.js            — accès SQLite, migrations conversations/messages, helpers CRUD + file de dispatch locale
+    db.js            — accès SQLite, migrations conversations/messages + table `apps`, helpers CRUD + file de dispatch locale
     llm.js           — relais Groq (OpenAI-compatible), prompt de cadrage, fallback modèles, dégradation propre
     dispatcher.js    — drain asynchrone des conversations `pending/failed` vers les backlogs agents
     anthropic.js     — ancien placeholder T3, désormais inutilisé
-    routing.js       — mapping source -> destination agent / URL / métadonnées Sandy
+    routing.js       — accès au routing via `getRoute(slug)` / `listApps()` depuis SQLite
   public/
     feedback-widget.js — widget flottant complet (modale chat + submit async + charte visuelle unifiée)
     test.html          — page locale de validation manuelle du widget
@@ -44,6 +44,9 @@ feedback-service/
 - Configuration runtime via `.env` local non versionné
 - Base SQLite dans `data/conversations.db`
 - SQLite en mode WAL
+- Le routing des apps n'est plus codé en dur : table SQLite `apps` + helper `getRoute(slug)`
+- Seed initial de `apps` : `bookingsExtApi`, `team-tracker`, `aam-website`, `stats-v1`, `hotel-aggregator` (comportement identique à l'ancien objet JS)
+- `listApps()` / `getApp()` / `upsertApp()` vivent dans `src/db.js`; `routing.js` ne contient plus de mapping statique
 - Le widget statique est servi sous `/widget/*` avec `Cache-Control: public, max-age=300`
 - Les fichiers JS widget forcent `Content-Type: application/javascript; charset=utf-8`
 - Le widget utilise `document.currentScript` avec fallback `querySelector('script[src*="feedback-widget.js"]')`
@@ -67,6 +70,6 @@ feedback-service/
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #226 — vue détail `/admin/feedbacks/:id`
-- **Etat courant spécifique :** `/admin/feedbacks` rend maintenant chaque conversation cliquable vers une page détail avec en-tête complet, historique user/assistant horodaté, spec soumise et statut ticket enrichi; 404 propre si la conversation n'existe pas
-- **Prochaine étape :** #227 — table `apps` + `getRoute()` pour sortir le routing du code statique
+- **Dernier ticket :** #227 — routing via table SQLite `apps` + `getRoute()`
+- **Etat courant spécifique :** le dispatcher et le dashboard ne dépendent plus d'un objet JS statique : le routing courant est seedé dans `apps`, `bookingsExtApi` continue à partir vers Candy local, `stats-v1` reste `pending` tant que `SANDY_TICKETS_URL` est vide, et le support `route.skip` est prêt pour la source `demo`
+- **Prochaine étape :** #228 — auto-découverte des apps inconnues + admin `/admin/apps`

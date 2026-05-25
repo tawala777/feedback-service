@@ -1,3 +1,4 @@
+require('dotenv').config({ quiet: true });
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
@@ -44,6 +45,38 @@ function migrate() {
   addCol('conversations', 'dispatch_attempts', 'INTEGER DEFAULT 0');
   addCol('conversations', 'last_dispatch_error', 'TEXT');
   addCol('conversations', 'dispatched_at', 'INTEGER');
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS apps (
+      slug TEXT PRIMARY KEY,
+      label TEXT,
+      agent TEXT,
+      ticket_url TEXT,
+      mission TEXT,
+      lot INTEGER,
+      wave INTEGER,
+      skip INTEGER NOT NULL DEFAULT 0,
+      configured INTEGER NOT NULL DEFAULT 1,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+  `);
+
+  const n = db.prepare('SELECT COUNT(1) AS n FROM apps').get().n;
+  if (n === 0) {
+    const now = Date.now();
+    const ins = db.prepare(`INSERT INTO apps (slug,label,agent,ticket_url,mission,lot,wave,skip,configured,active,created_at,updated_at)
+                            VALUES (@slug,@label,@agent,@ticket_url,@mission,@lot,@wave,@skip,1,1,${now},${now})`);
+    const seed = [
+      { slug: 'bookingsExtApi', label: 'bookingsExtApi', agent: 'candy', ticket_url: 'http://localhost:4000/api/tickets', mission: null, lot: null, wave: null, skip: 0 },
+      { slug: 'team-tracker', label: 'team-tracker', agent: 'candy', ticket_url: 'http://localhost:4000/api/tickets', mission: null, lot: null, wave: null, skip: 0 },
+      { slug: 'aam-website', label: 'aam-website', agent: 'candy', ticket_url: 'http://localhost:4000/api/tickets', mission: null, lot: null, wave: null, skip: 0 },
+      { slug: 'stats-v1', label: 'stats-v1', agent: 'sandy', ticket_url: process.env.SANDY_TICKETS_URL || null, mission: 'user-feedback', lot: 0, wave: 4, skip: 0 },
+      { slug: 'hotel-aggregator', label: 'hotel-aggregator', agent: 'sandy', ticket_url: process.env.SANDY_TICKETS_URL || null, mission: 'user-feedback', lot: 0, wave: 4, skip: 0 }
+    ];
+    db.transaction((rows) => rows.forEach((r) => ins.run(r)))(seed);
+  }
 }
 
 function createConversation({ source, userId }) {
@@ -95,6 +128,39 @@ function markDispatchFailed({ conversationId, error }) {
   ).run(String(error).slice(0, 500), conversationId);
 }
 
+function markDispatchSkipped({ conversationId }) {
+  db.prepare(`UPDATE conversations SET dispatch_status='skipped', dispatched_at=? WHERE id=?`)
+    .run(Date.now(), conversationId);
+}
+
+function listApps() {
+  return db.prepare('SELECT * FROM apps ORDER BY configured ASC, slug ASC').all();
+}
+
+function getApp(slug) {
+  return db.prepare('SELECT * FROM apps WHERE slug = ?').get(slug);
+}
+
+function upsertApp(a) {
+  const now = Date.now();
+  db.prepare(`INSERT INTO apps (slug,label,agent,ticket_url,mission,lot,wave,skip,configured,active,created_at,updated_at)
+    VALUES (@slug,@label,@agent,@ticket_url,@mission,@lot,@wave,@skip,@configured,@active,${now},${now})
+    ON CONFLICT(slug) DO UPDATE SET label=@label, agent=@agent, ticket_url=@ticket_url,
+      mission=@mission, lot=@lot, wave=@wave, skip=@skip, configured=@configured, active=@active, updated_at=${now}`)
+    .run({
+      slug: a.slug,
+      label: a.label || a.slug,
+      agent: a.agent || null,
+      ticket_url: a.ticket_url || null,
+      mission: a.mission || null,
+      lot: (a.lot ?? null),
+      wave: (a.wave ?? null),
+      skip: a.skip ? 1 : 0,
+      configured: a.configured ? 1 : 0,
+      active: a.active === 0 ? 0 : 1
+    });
+}
+
 function counts() {
   const conversations = db.prepare('SELECT COUNT(1) as n FROM conversations').get().n;
   const messages = db.prepare('SELECT COUNT(1) as n FROM messages').get().n;
@@ -103,4 +169,19 @@ function counts() {
 
 migrate();
 
-module.exports = { db, createConversation, addMessage, getMessages, finalizeConversation, markReadyForDispatch, getPendingDispatch, markDispatched, markDispatchFailed, counts };
+module.exports = {
+  db,
+  createConversation,
+  addMessage,
+  getMessages,
+  finalizeConversation,
+  markReadyForDispatch,
+  getPendingDispatch,
+  markDispatched,
+  markDispatchFailed,
+  markDispatchSkipped,
+  listApps,
+  getApp,
+  upsertApp,
+  counts
+};

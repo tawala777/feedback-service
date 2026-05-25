@@ -3,7 +3,7 @@ const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const dbModule = require('./db');
-const ROUTING = require('./routing');
+const { getRoute } = require('./routing');
 const { chat, extractSubmitJson } = require('./llm');
 const { runDispatch } = require('./dispatcher');
 
@@ -202,7 +202,7 @@ app.post('/api/feedback/submit', (req, res) => {
 
 async function enrichAgentTicketStatus(conv) {
   if (conv.dispatch_status === 'sent' && conv.ticket_id) {
-    const route = ROUTING[conv.source];
+    const route = getRoute(conv.source);
     if (route && route.url) {
       try {
         const url = route.url.replace(/\/api\/tickets$/, `/api/tickets/${conv.ticket_id}`);
