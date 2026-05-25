@@ -34,9 +34,20 @@ function dt(ms) {
   return ms ? new Date(ms).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' }) : '—';
 }
 
+function getAgentTicketHref(c) {
+  if (!c.ticket_id) return null;
+  const route = getRoute(c.source);
+  if (!route || !route.url) return null;
+  return route.url.replace(/\/api\/tickets$/, `/api/tickets/${c.ticket_id}`);
+}
+
 function ticketBlock(c) {
   if (c.dispatch_status === 'sent') {
-    return `Envoyé → <b>${esc(c.ticket_destination)}</b>${c.agent_ticket_status ? ` · statut dev : <b>${esc(c.agent_ticket_status)}</b>` : ''}`;
+    const href = getAgentTicketHref(c);
+    const label = href
+      ? `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer"><b>${esc(c.ticket_destination)}</b></a>`
+      : `<b>${esc(c.ticket_destination)}</b>`;
+    return `Envoyé → ${label}${c.agent_ticket_status ? ` · statut dev : <b>${esc(c.agent_ticket_status)}</b>` : ''}`;
   }
   if (c.dispatch_status === 'failed') {
     return `Échec dispatch : <code>${esc(c.last_dispatch_error)}</code> (tentatives : ${c.dispatch_attempts || 0}/${MAX_DISPATCH_ATTEMPTS})`;
@@ -50,8 +61,9 @@ function renderDashboard(conversations) {
     const state = dispatchLabel(c);
     const stateColor = { draft: '#9ca3af', 'finalisé': '#6b7280', 'en file': '#f59e0b', 'échec (retry)': '#dc2626', 'envoyé': '#059669' }[state] || '#000';
     const preview = esc((c.first_user_message || '').slice(0, 100));
+    const ticketHref = getAgentTicketHref(c);
     const ticketCell = (c.dispatch_status === 'sent' && c.ticket_destination)
-      ? `${esc(c.ticket_destination)}${c.agent_ticket_status ? ` <small>(${esc(c.agent_ticket_status)})</small>` : ''}`
+      ? `${ticketHref ? `<a href="${esc(ticketHref)}" target="_blank" rel="noopener noreferrer">${esc(c.ticket_destination)}</a>` : esc(c.ticket_destination)}${c.agent_ticket_status ? ` <small>(${esc(c.agent_ticket_status)})</small>` : ''}`
       : (c.dispatch_status === 'failed'
           ? `<div style="color:#b91c1c;font-size:13px;line-height:1.45"><b>${c.dispatch_attempts || 0}/${MAX_DISPATCH_ATTEMPTS}</b> · ${esc(c.last_dispatch_error || 'erreur inconnue')}</div>`
           : '—');

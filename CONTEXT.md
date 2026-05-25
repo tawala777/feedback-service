@@ -69,7 +69,7 @@ feedback-service/
 - `/admin/feedbacks` affiche jusqu'à 200 conversations avec états : `draft`, `finalisé`, `en file`, `échec (retry)`, `envoyé`
 - Chaque ligne de `/admin/feedbacks` pointe vers `/admin/feedbacks/:id`
 - `/admin/feedbacks/:id` affiche l'échange complet, la spec soumise (`submit_spec`) et l'état ticket enrichi si disponible
-- Pour les lignes `envoyé`, la liste et le détail tentent de lire le ticket agent courant et affichent son statut brut (`open`, `resolved`, `http 404`, `unreachable`, etc.) sans jamais casser la page
+- Pour les lignes `envoyé`, la liste et le détail tentent de lire le ticket agent courant, affichent son statut brut (`open`, `resolved`, `http 404`, `unreachable`, etc.) et rendent `ticket_destination` cliquable vers l'endpoint ticket correspondant
 - Pour les lignes `failed`, la liste montre l'erreur complète en rouge + compteur `tentatives/5`, et la vue détail affiche un bouton `Re-poster`
 - `POST /admin/feedbacks/:id/redispatch` est limité aux conversations `failed` : il remet `pending`, remet les compteurs à zéro, puis le dispatcher la reprend au cycle suivant
 - `/api/admin/apps` expose les apps en JSON ; `POST /api/admin/apps` crée/édite une app et recalcule `configured` selon la présence d'un `agent`
@@ -80,6 +80,6 @@ feedback-service/
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #234 — dispatch robuste (payload unifié, erreur visible, re-post manuel)
-- **Etat courant spécifique :** Candy accepte le payload unifié avec `mission/lot/wave` sans rejet; les erreurs de dispatch sont visibles dans `/admin/feedbacks`; une conversation `failed` peut être remise en `pending` via `POST /admin/feedbacks/:id/redispatch` puis repartir sans duplication des `sent`
-- **Prochaine étape :** #235 — amélioration admin `apps` (édition assistée / UX) ou #236 — enrichissement transcript + images + dedup
+- **Dernier ticket :** #235 — lien vers le ticket dans Feedback Admin
+- **Etat courant spécifique :** dans `/admin/feedbacks` et `/admin/feedbacks/:id`, un feedback `sent` rend désormais `ticket_destination` cliquable vers l'endpoint ticket agent correspondant (`/api/tickets/:id` sur Candy local)
+- **Prochaine étape :** #236 — enrichissement transcript + images + dedup
