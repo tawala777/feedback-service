@@ -56,7 +56,7 @@ feedback-service/
 
 ## Etat courant
 
-- **Travail en cours :** ticket #219 sur `main`
+- **Travail en cours :** aucun
 - **Dernier ticket :** #219 — dispatcher asynchrone des conversations `pending/failed` vers les backlogs agents
 - **Etat courant spécifique :** une conversation locale `bookingsExtApi` en file est correctement dispatchée vers Candy local avec `dispatch_status='sent'`, `ticket_id` et `ticket_destination`; une conversation `stats-v1` reste `pending` sans erreur tant que `SANDY_TICKETS_URL` est vide
 - **Prochaine étape :** #220 — widget complet (bouton flottant + modale chat + submit async)
