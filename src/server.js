@@ -59,6 +59,28 @@ app.post('/api/feedback/chat', async (req, res) => {
   }
 });
 
+app.post('/api/feedback/submit', (req, res) => {
+  try {
+    const { conversationId } = req.body;
+    if (!conversationId) return res.status(400).json({ error: 'conversationId required' });
+
+    const messages = dbModule.getMessages(conversationId);
+    if (!messages.length) return res.status(404).json({ error: 'conversation not found' });
+
+    const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant');
+    if (!lastAssistant) return res.status(400).json({ error: 'no assistant message' });
+
+    const spec = extractSubmitJson(lastAssistant.content);
+    if (!spec) return res.status(400).json({ error: 'spec not finalized (no [READY_FOR_SUBMIT] marker)' });
+
+    dbModule.markReadyForDispatch({ conversationId, submitSpec: spec });
+    return res.json({ conversationId, status: 'queued' });
+  } catch (err) {
+    console.error('submit error', err);
+    return res.status(500).json({ error: 'internal error', detail: err.message });
+  }
+});
+
 app.use('/widget', express.static(path.join(__dirname, '..', 'public'), {
   maxAge: '5m',
   setHeaders: (res, filePath) => {

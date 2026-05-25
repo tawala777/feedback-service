@@ -10,6 +10,10 @@ const dbPath = path.join(DB_DIR, 'conversations.db');
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 
+function columnExists(table, col) {
+  return db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col);
+}
+
 function migrate() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS conversations (
@@ -31,6 +35,15 @@ function migrate() {
     );
     CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id, id);
   `);
+
+  const addCol = (table, col, def) => {
+    if (!columnExists(table, col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
+  };
+  addCol('conversations', 'submit_spec', 'TEXT');
+  addCol('conversations', 'dispatch_status', 'TEXT');
+  addCol('conversations', 'dispatch_attempts', 'INTEGER DEFAULT 0');
+  addCol('conversations', 'last_dispatch_error', 'TEXT');
+  addCol('conversations', 'dispatched_at', 'INTEGER');
 }
 
 function createConversation({ source, userId }) {
@@ -56,6 +69,12 @@ function finalizeConversation({ conversationId, ticketId, ticketDestination }) {
     .run(Date.now(), ticketId, ticketDestination, conversationId);
 }
 
+function markReadyForDispatch({ conversationId, submitSpec }) {
+  db.prepare(
+    `UPDATE conversations SET finalized_at = ?, submit_spec = ?, dispatch_status = 'pending' WHERE id = ?`
+  ).run(Date.now(), JSON.stringify(submitSpec), conversationId);
+}
+
 function counts() {
   const conversations = db.prepare('SELECT COUNT(1) as n FROM conversations').get().n;
   const messages = db.prepare('SELECT COUNT(1) as n FROM messages').get().n;
@@ -64,4 +83,4 @@ function counts() {
 
 migrate();
 
-module.exports = { db, createConversation, addMessage, getMessages, finalizeConversation, counts };
+module.exports = { db, createConversation, addMessage, getMessages, finalizeConversation, markReadyForDispatch, counts };

@@ -25,11 +25,11 @@
 ```text
 feedback-service/
   src/
-    server.js        — bootstrap Express + CORS + health endpoint enrichi DB + API chat + service statique widget
-    db.js            — accès SQLite, migrations conversations/messages, helpers CRUD
+    server.js        — bootstrap Express + CORS + health endpoint enrichi DB + API chat + API submit + service statique widget
+    db.js            — accès SQLite, migrations conversations/messages, helpers CRUD + file de dispatch locale
     llm.js           — relais Groq (OpenAI-compatible), prompt de cadrage, fallback modèles, dégradation propre
     anthropic.js     — ancien placeholder T3, désormais inutilisé
-    routing.js       — placeholder T4 (routing destinations)
+    routing.js       — placeholder T4/T7 (routing destinations)
   public/
     feedback-widget.js — placeholder T5 servi statiquement, widget complet prévu en T6
   data/              — stockage local SQLite (`conversations.db`)
@@ -47,11 +47,13 @@ feedback-service/
 - LLM = Groq via `openai` pointé sur `https://api.groq.com/openai/v1`
 - Modèles Groq essayés dans l'ordre : `llama-3.3-70b-versatile`, `llama-3.1-70b-versatile`, `mixtral-8x7b-32768`
 - Si Groq est indisponible, `/api/feedback/chat` répond `200` avec message de réessai et `readyForSubmit=false` (jamais de faux cadrage)
+- Le submit est totalement découplé du dispatch : `/api/feedback/submit` ne fait aucun appel réseau et écrit seulement en file locale (`dispatch_status='pending'`)
+- Colonnes de dispatch locales dans `conversations` : `submit_spec`, `dispatch_status`, `dispatch_attempts`, `last_dispatch_error`, `dispatched_at`
 - PM2 process name: `feedback-service`
 
 ## Etat courant
 
-- **Travail en cours :** aucun
-- **Dernier ticket :** #217 — endpoint `/api/feedback/chat` v2 via Groq avec prompt de cadrage et `submitSpec`
-- **Etat courant spécifique :** `/api/feedback/chat` crée/reprend une conversation, persiste les messages user/assistant, interroge Groq via `src/llm.js`, retourne `readyForSubmit` + `submitSpec` quand `[READY_FOR_SUBMIT]` est présent, et dégrade proprement avec message de réessai si le LLM est indisponible
-- **Prochaine étape :** #218 — endpoint `/api/feedback/submit` v2 (persistance locale + mise en file dispatch, zéro réseau)
+- **Travail en cours :** ticket #218 sur `main`
+- **Dernier ticket :** #218 — `/api/feedback/submit` écrit la spec validée en file locale sans réseau
+- **Etat courant spécifique :** quand une conversation contient `[READY_FOR_SUBMIT]`, `/api/feedback/submit` pose `finalized_at`, sérialise `submit_spec` et marque `dispatch_status='pending'`; un submit prématuré renvoie `400`, un `conversationId` inconnu renvoie `404`
+- **Prochaine étape :** #219 — dispatcher asynchrone qui draine les conversations `pending` vers les backlogs Candy/Sandy
