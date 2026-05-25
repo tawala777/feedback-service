@@ -45,9 +45,11 @@ feedback-service/
 - Base SQLite dans `data/conversations.db`
 - SQLite en mode WAL
 - Le routing des apps n'est plus codé en dur : table SQLite `apps` + helper `getRoute(slug)`
-- Seed initial de `apps` : `bookingsExtApi`, `team-tracker`, `aam-website`, `stats-v1`, `hotel-aggregator` (comportement identique à l'ancien objet JS)
+- Seed initial de `apps` : `bookingsExtApi`, `team-tracker`, `aam-website`, `stats-v1`, `hotel-aggregator`
+- L'app système `demo` est garantie au boot via `upsertApp(...)` avec `skip=1`, `configured=1`, `active=1` pour la page locale `/widget/test.html`
 - `listApps()` / `getApp()` / `discoverApp()` / `upsertApp()` vivent dans `src/db.js`; `routing.js` ne contient plus de mapping statique
 - Une source inconnue n'est plus rejetée au dispatch : elle est auto-créée dans `apps` avec `configured=0`, sans destination, et le feedback reste `pending` tant qu'un dev n'est pas assigné
+- Une source avec `skip=1` est consommée par le dispatcher en `dispatch_status='skipped'` et ne crée jamais de ticket backlog
 - Le widget statique est servi sous `/widget/*` avec `Cache-Control: public, max-age=300`
 - Les fichiers JS widget forcent `Content-Type: application/javascript; charset=utf-8`
 - Le widget utilise `document.currentScript` avec fallback `querySelector('script[src*="feedback-widget.js"]')`
@@ -68,11 +70,12 @@ feedback-service/
 - Pour les lignes `envoyé`, la liste et le détail tentent de lire le ticket agent courant et affichent son statut brut (`open`, `resolved`, `http 404`, `unreachable`, etc.) sans jamais casser la page
 - `/api/admin/apps` expose les apps en JSON ; `POST /api/admin/apps` crée/édite une app et recalcule `configured` selon la présence d'un `agent`
 - `/admin/apps` affiche le tableau des apps + un formulaire simple de configuration, avec badge visible `⚠ à configurer` quand `configured=0`
+- `public/test.html` doit toujours pointer vers `data-source="demo"` pour éviter toute pollution du backlog Candy pendant les validations widget
 - PM2 process name: `feedback-service`
 
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #228 — auto-découverte des apps inconnues + admin `/admin/apps`
-- **Etat courant spécifique :** une `source` inconnue soumise puis dispatchée crée automatiquement une app `configured=0` et laisse le feedback `pending`; après configuration via `/api/admin/apps`, le cycle de dispatch suivant part sans redéploiement. Validation complète faite avec `appx-temp-228` puis nettoyage en base/backlog.
-- **Prochaine étape :** #229 — support `skip=1` pour app `demo` + séparation visuelle des feedbacks ignorés
+- **Dernier ticket :** #229 — source `demo` skip pour la page de test widget
+- **Etat courant spécifique :** `/widget/test.html` pointe vers `data-source="demo"`; l'app `demo` est seedée/garantie avec `skip=1`, et un submit de test termine en `dispatch_status='skipped'` sans créer de ticket Candy
+- **Prochaine étape :** #233 — séparation visuelle / signalement explicite des feedbacks ignorés (`skipped`) dans l'admin

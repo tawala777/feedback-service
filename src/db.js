@@ -77,6 +77,8 @@ function migrate() {
     ];
     db.transaction((rows) => rows.forEach((r) => ins.run(r)))(seed);
   }
+
+  upsertApp({ slug: 'demo', label: 'Démo (page de test)', agent: null, ticket_url: null, skip: 1, configured: 1, active: 1 });
 }
 
 function createConversation({ source, userId }) {
