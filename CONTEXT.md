@@ -74,12 +74,14 @@ feedback-service/
 - `POST /admin/feedbacks/:id/redispatch` est limité aux conversations `failed` : il remet `pending`, remet les compteurs à zéro, puis le dispatcher la reprend au cycle suivant
 - `/api/admin/apps` expose les apps en JSON ; `POST /api/admin/apps` crée/édite une app et recalcule `configured` selon la présence d'un `agent`
 - `/admin/apps` affiche le tableau des apps + un formulaire simple de configuration, avec badge visible `⚠ à configurer` quand `configured=0`
-- `public/test.html` doit toujours pointer vers `data-source="demo"` pour éviter toute pollution du backlog Candy pendant les validations widget
+- `public/test.html` ne met plus `data-source` en dur : la page résout la source via `?source=<slug>` + `/api/admin/apps`, puis injecte dynamiquement le widget avec `data-source` et `data-app-name`
+- `public/test.html` affiche un sélecteur `Application cible` et recharge la page sur `?source=<slug>` au changement, ce qui garantit un widget propre à chaque test
+- Défaut de `public/test.html` : `demo`; choisir `bookingsExtApi` / `team-tracker` / `aam-website` crée un vrai ticket Candy, `stats-v1` / `hotel-aggregator` restent `pending` tant que Sandy n'est pas branché, `demo` finit en `skipped`
 - PM2 process name: `feedback-service`
 
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #235 — lien vers le ticket dans Feedback Admin
-- **Etat courant spécifique :** dans `/admin/feedbacks` et `/admin/feedbacks/:id`, un feedback `sent` rend désormais `ticket_destination` cliquable vers l'endpoint ticket agent correspondant (`/api/tickets/:id` sur Candy local)
-- **Prochaine étape :** #236 — enrichissement transcript + images + dedup
+- **Dernier ticket :** #239 — sélecteur de source sur `/widget/test.html`
+- **Etat courant spécifique :** `/widget/test.html` liste toutes les apps via `/api/admin/apps`, se pilote par `?source=<slug>`, injecte le widget dynamiquement avec la source active et permet donc de créer de vrais tickets depuis la page de test vers n'importe quelle app. Validation faite : `bookingsExtApi` -> ticket Candy réel `#243` puis supprimé ; `demo` -> `dispatch_status='skipped'` sans ticket.
+- **Prochaine étape :** #240 — amélioration admin `apps` (édition rapide) ou #241 — audit / nettoyage des tickets feedback-service

@@ -3,9 +3,76 @@
 <head>
   <meta charset="UTF-8">
   <title>Widget test</title>
+  <style>
+    body { font-family: Inter, system-ui, sans-serif; margin: 24px; color: #0f172a; }
+    .panel { max-width: 760px; background: #f8fafc; border: 1px solid #dbe3ef; border-radius: 12px; padding: 18px 20px; }
+    .row { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; margin: 16px 0 10px; }
+    label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: #334155; min-width: 280px; }
+    select { padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; font: inherit; }
+    .active { font-size: 14px; color: #475569; }
+    code { background: #e2e8f0; border-radius: 6px; padding: 2px 6px; }
+  </style>
 </head>
 <body>
-  <h1>Test feedback-widget</h1>
-  <script src="/widget/feedback-widget.js" data-source="demo" defer></script>
+  <div class="panel">
+    <h1>Test feedback-widget</h1>
+    <p>Cette page permet de tester le widget avec n'importe quelle application routée par <code>/api/admin/apps</code>.</p>
+    <div class="row">
+      <label>
+        Application cible
+        <select id="fb-source"></select>
+      </label>
+      <div class="active">Source active : <strong id="fb-active-source">demo</strong></div>
+    </div>
+  </div>
+
+  <script>
+    (async function () {
+      const select = document.getElementById('fb-source');
+      const activeLabel = document.getElementById('fb-active-source');
+      const params = new URLSearchParams(window.location.search);
+      const requested = params.get('source') || 'demo';
+
+      let apps;
+      try {
+        const resp = await fetch('/api/admin/apps');
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        apps = await resp.json();
+      } catch {
+        apps = [{ slug: 'demo', label: 'demo' }];
+      }
+
+      if (!Array.isArray(apps) || apps.length === 0) {
+        apps = [{ slug: 'demo', label: 'demo' }];
+      }
+
+      for (const app of apps) {
+        const option = document.createElement('option');
+        option.value = app.slug;
+        option.textContent = `${app.label || app.slug} (${app.slug})`;
+        select.appendChild(option);
+      }
+
+      const slugs = new Set(apps.map((a) => a.slug));
+      const activeSource = slugs.has(requested)
+        ? requested
+        : (slugs.has('demo') ? 'demo' : apps[0].slug);
+      const activeApp = apps.find((a) => a.slug === activeSource) || { slug: activeSource, label: activeSource };
+
+      select.value = activeSource;
+      activeLabel.textContent = `${activeApp.label || activeApp.slug} (${activeApp.slug})`;
+
+      select.addEventListener('change', () => {
+        window.location.search = '?source=' + encodeURIComponent(select.value);
+      });
+
+      const script = document.createElement('script');
+      script.src = '/widget/feedback-widget.js';
+      script.defer = true;
+      script.setAttribute('data-source', activeSource);
+      script.setAttribute('data-app-name', activeSource.toUpperCase());
+      document.body.appendChild(script);
+    })();
+  </script>
 </body>
 </html>
