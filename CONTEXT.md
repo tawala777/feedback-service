@@ -51,7 +51,7 @@ feedback-service/
 
 ## Etat courant
 
-- **Travail en cours :** ticket #217 sur `main`
+- **Travail en cours :** aucun
 - **Dernier ticket :** #217 — endpoint `/api/feedback/chat` v2 via Groq avec prompt de cadrage et `submitSpec`
 - **Etat courant spécifique :** `/api/feedback/chat` crée/reprend une conversation, persiste les messages user/assistant, interroge Groq via `src/llm.js`, retourne `readyForSubmit` + `submitSpec` quand `[READY_FOR_SUBMIT]` est présent, et dégrade proprement avec message de réessai si le LLM est indisponible
 - **Prochaine étape :** #218 — endpoint `/api/feedback/submit` v2 (persistance locale + mise en file dispatch, zéro réseau)
