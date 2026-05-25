@@ -25,7 +25,7 @@
 ```text
 feedback-service/
   src/
-    server.js        — bootstrap Express + CORS + health endpoint enrichi DB + API chat + API submit + dashboard admin + service statique widget + planification dispatch
+    server.js        — bootstrap Express + CORS + health endpoint enrichi DB + API chat + API submit + dashboard admin liste+détail + service statique widget + planification dispatch
     db.js            — accès SQLite, migrations conversations/messages, helpers CRUD + file de dispatch locale
     llm.js           — relais Groq (OpenAI-compatible), prompt de cadrage, fallback modèles, dégradation propre
     dispatcher.js    — drain asynchrone des conversations `pending/failed` vers les backlogs agents
@@ -59,12 +59,14 @@ feedback-service/
 - Le dispatcher tourne toutes les 2 minutes + un passage au démarrage du process via `runDispatch()`
 - Routing actuel : `bookingsExtApi`, `team-tracker`, `aam-website` -> Candy local (`http://localhost:4000/api/tickets`); `stats-v1` et `hotel-aggregator` -> Sandy via `SANDY_TICKETS_URL` (vide par défaut)
 - `/admin/feedbacks` affiche jusqu'à 200 conversations avec états : `draft`, `finalisé`, `en file`, `échec (retry)`, `envoyé`
-- Pour les lignes `envoyé`, le dashboard tente de lire le ticket agent courant et affiche son statut brut (`open`, `resolved`, `http 404`, `unreachable`, etc.) sans jamais casser la page
+- Chaque ligne de `/admin/feedbacks` pointe vers `/admin/feedbacks/:id`
+- `/admin/feedbacks/:id` affiche l'échange complet, la spec soumise (`submit_spec`) et l'état ticket enrichi si disponible
+- Pour les lignes `envoyé`, la liste et le détail tentent de lire le ticket agent courant et affichent son statut brut (`open`, `resolved`, `http 404`, `unreachable`, etc.) sans jamais casser la page
 - PM2 process name: `feedback-service`
 
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #224 — réinitialisation du widget après submit sans reload
-- **Etat courant spécifique :** après submit réussi, le widget reste immédiatement réutilisable sans reload : confirmation visible, input réactivé, `conversationId` remise à `null`, historique remplacé par un nouveau prompt de départ; validation navigateur OK sur `/widget/test.html`
-- **Prochaine étape :** aucun ticket feedback-service ouvert
+- **Dernier ticket :** #226 — vue détail `/admin/feedbacks/:id`
+- **Etat courant spécifique :** `/admin/feedbacks` rend maintenant chaque conversation cliquable vers une page détail avec en-tête complet, historique user/assistant horodaté, spec soumise et statut ticket enrichi; 404 propre si la conversation n'existe pas
+- **Prochaine étape :** #227 — table `apps` + `getRoute()` pour sortir le routing du code statique
