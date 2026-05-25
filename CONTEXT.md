@@ -51,6 +51,8 @@ feedback-service/
 - Une source inconnue n'est plus rejetée au dispatch : elle est auto-créée dans `apps` avec `configured=0`, sans destination, et le feedback reste `pending` tant qu'un dev n'est pas assigné
 - Une source avec `skip=1` est consommée par le dispatcher en `dispatch_status='skipped'` et ne crée jamais de ticket backlog
 - Le dispatcher envoie désormais un payload unifié à Candy ET Sandy : `title`, `description`, `priority`, `mission`, `lot`, `wave`, `createdBy`
+- La `description` du ticket dispatché embarque désormais `Conversation + detail : <service>/admin/feedbacks/<conversationId>` puis un bloc `Conversation complete` contenant tous les messages `user`/`assistant` horodatés dans l'ordre
+- Le lien de détail injecté dans les tickets utilise `FEEDBACK_SERVICE_URL` ou `SERVICE_URL` si défini, sinon fallback `http://localhost:4400`
 - Le widget statique est servi sous `/widget/*` avec `Cache-Control: public, max-age=300`
 - Les fichiers JS widget forcent `Content-Type: application/javascript; charset=utf-8`
 - Le widget utilise `document.currentScript` avec fallback `querySelector('script[src*="feedback-widget.js"]')`
@@ -86,6 +88,6 @@ feedback-service/
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #241 — champ utilisateur persisté dans le widget
-- **Etat courant spécifique :** le widget propose désormais un champ `Utilisateur` optionnel persistant, pré-rempli au reload, envoyé à chaque étape du flux, et visible ensuite dans la colonne `User` de `/admin/feedbacks`
-- **Prochaine étape :** audit / nettoyage backlog feedback-service ou découpage de l'ex-ticket #236
+- **Dernier ticket :** #244 — transcript complet + lien détail dans le ticket dispatché
+- **Etat courant spécifique :** chaque ticket créé par le dispatcher embarque désormais le transcript complet horodaté de la conversation et un lien direct vers `/admin/feedbacks/:id`, vérifié sur un vrai dispatch `bookingsExtApi` puis ticket de test supprimé
+- **Prochaine étape :** #245 — upload image (coller/fichier) + stockage + affichage admin

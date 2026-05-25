@@ -2,11 +2,32 @@ const { getRoute } = require('./routing');
 const db = require('./db');
 
 const MAX_ATTEMPTS = 5;
+const SERVICE_URL = process.env.FEEDBACK_SERVICE_URL || process.env.SERVICE_URL || `http://localhost:${process.env.PORT || 4400}`;
 
-function buildPayload(route, source, spec) {
+function formatConversationLink(conversationId) {
+  return `${SERVICE_URL.replace(/\/$/, '')}/admin/feedbacks/${conversationId}`;
+}
+
+function formatTranscript(messages) {
+  if (!messages.length) return '- (aucun message)';
+
+  return messages.map((message) => {
+    const ts = message.created_at ? new Date(message.created_at).toISOString() : 'unknown-date';
+    const body = String(message.content || '')
+      .split('\n')
+      .map((line) => `  ${line}`)
+      .join('\n');
+    return `- [${ts}] ${message.role}:\n${body}`;
+  }).join('\n\n');
+}
+
+function buildPayload(route, source, spec, conversation) {
+  const detailUrl = formatConversationLink(conversation.id);
+  const transcript = formatTranscript(conversation.messages || []);
+
   return {
     title: `[${source}] ${spec.title}`,
-    description: `${spec.description}\n\n---\n*Soumis via feedback-service depuis ${source}*`,
+    description: `${spec.description}\n\nConversation + detail : ${detailUrl}\n\n## Conversation complete\n${transcript}\n\n---\n*Soumis via feedback-service depuis ${source}*`,
     priority: spec.priority || 'medium',
     mission: route.mission,
     lot: route.lot,
@@ -36,11 +57,13 @@ async function dispatchOne(conv) {
     return;
   }
 
+  const messages = db.getMessages(conv.id);
+
   try {
     const resp = await fetch(route.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(buildPayload(route, conv.source, spec))
+      body: JSON.stringify(buildPayload(route, conv.source, spec, { id: conv.id, messages }))
     });
     if (!resp.ok) {
       throw new Error(`upstream ${resp.status}: ${(await resp.text()).slice(0, 200)}`);

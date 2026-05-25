@@ -95,7 +95,7 @@ function addMessage({ conversationId, role, content }) {
 }
 
 function getMessages(conversationId) {
-  return db.prepare('SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY id ASC')
+  return db.prepare('SELECT role, content, created_at FROM messages WHERE conversation_id = ? ORDER BY id ASC')
     .all(conversationId);
 }
 
