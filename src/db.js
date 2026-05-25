@@ -75,6 +75,26 @@ function markReadyForDispatch({ conversationId, submitSpec }) {
   ).run(Date.now(), JSON.stringify(submitSpec), conversationId);
 }
 
+function getPendingDispatch(maxAttempts) {
+  return db.prepare(
+    `SELECT * FROM conversations
+     WHERE dispatch_status IN ('pending','failed') AND COALESCE(dispatch_attempts,0) < ?
+     ORDER BY finalized_at ASC`
+  ).all(maxAttempts);
+}
+
+function markDispatched({ conversationId, ticketId, destination }) {
+  db.prepare(
+    `UPDATE conversations SET dispatch_status='sent', ticket_id=?, ticket_destination=?, dispatched_at=? WHERE id=?`
+  ).run(ticketId, destination, Date.now(), conversationId);
+}
+
+function markDispatchFailed({ conversationId, error }) {
+  db.prepare(
+    `UPDATE conversations SET dispatch_status='failed', last_dispatch_error=?, dispatch_attempts=COALESCE(dispatch_attempts,0)+1 WHERE id=?`
+  ).run(String(error).slice(0, 500), conversationId);
+}
+
 function counts() {
   const conversations = db.prepare('SELECT COUNT(1) as n FROM conversations').get().n;
   const messages = db.prepare('SELECT COUNT(1) as n FROM messages').get().n;
@@ -83,4 +103,4 @@ function counts() {
 
 migrate();
 
-module.exports = { db, createConversation, addMessage, getMessages, finalizeConversation, markReadyForDispatch, counts };
+module.exports = { db, createConversation, addMessage, getMessages, finalizeConversation, markReadyForDispatch, getPendingDispatch, markDispatched, markDispatchFailed, counts };

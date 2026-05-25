@@ -25,11 +25,12 @@
 ```text
 feedback-service/
   src/
-    server.js        — bootstrap Express + CORS + health endpoint enrichi DB + API chat + API submit + service statique widget
+    server.js        — bootstrap Express + CORS + health endpoint enrichi DB + API chat + API submit + service statique widget + planification dispatch
     db.js            — accès SQLite, migrations conversations/messages, helpers CRUD + file de dispatch locale
     llm.js           — relais Groq (OpenAI-compatible), prompt de cadrage, fallback modèles, dégradation propre
+    dispatcher.js    — drain asynchrone des conversations `pending/failed` vers les backlogs agents
     anthropic.js     — ancien placeholder T3, désormais inutilisé
-    routing.js       — placeholder T4/T7 (routing destinations)
+    routing.js       — mapping source -> destination agent / URL / métadonnées Sandy
   public/
     feedback-widget.js — placeholder T5 servi statiquement, widget complet prévu en T6
   data/              — stockage local SQLite (`conversations.db`)
@@ -49,11 +50,13 @@ feedback-service/
 - Si Groq est indisponible, `/api/feedback/chat` répond `200` avec message de réessai et `readyForSubmit=false` (jamais de faux cadrage)
 - Le submit est totalement découplé du dispatch : `/api/feedback/submit` ne fait aucun appel réseau et écrit seulement en file locale (`dispatch_status='pending'`)
 - Colonnes de dispatch locales dans `conversations` : `submit_spec`, `dispatch_status`, `dispatch_attempts`, `last_dispatch_error`, `dispatched_at`
+- Le dispatcher tourne toutes les 2 minutes + un passage au démarrage du process via `runDispatch()`
+- Routing actuel : `bookingsExtApi`, `team-tracker`, `aam-website` -> Candy local (`http://localhost:4000/api/tickets`); `stats-v1` et `hotel-aggregator` -> Sandy via `SANDY_TICKETS_URL` (vide par défaut)
 - PM2 process name: `feedback-service`
 
 ## Etat courant
 
-- **Travail en cours :** aucun
-- **Dernier ticket :** #218 — `/api/feedback/submit` écrit la spec validée en file locale sans réseau
-- **Etat courant spécifique :** quand une conversation contient `[READY_FOR_SUBMIT]`, `/api/feedback/submit` pose `finalized_at`, sérialise `submit_spec` et marque `dispatch_status='pending'`; un submit prématuré renvoie `400`, un `conversationId` inconnu renvoie `404`
-- **Prochaine étape :** #219 — dispatcher asynchrone qui draine les conversations `pending` vers les backlogs Candy/Sandy
+- **Travail en cours :** ticket #219 sur `main`
+- **Dernier ticket :** #219 — dispatcher asynchrone des conversations `pending/failed` vers les backlogs agents
+- **Etat courant spécifique :** une conversation locale `bookingsExtApi` en file est correctement dispatchée vers Candy local avec `dispatch_status='sent'`, `ticket_id` et `ticket_destination`; une conversation `stats-v1` reste `pending` sans erreur tant que `SANDY_TICKETS_URL` est vide
+- **Prochaine étape :** #220 — widget complet (bouton flottant + modale chat + submit async)

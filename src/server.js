@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const dbModule = require('./db');
 const { chat, extractSubmitJson } = require('./llm');
+const { runDispatch } = require('./dispatcher');
 
 const app = express();
 const PORT = process.env.PORT || 4400;
@@ -89,6 +90,9 @@ app.use('/widget', express.static(path.join(__dirname, '..', 'public'), {
     }
   }
 }));
+
+setInterval(() => runDispatch().catch((e) => console.error('[dispatcher] run error', e)), 2 * 60 * 1000);
+runDispatch().catch((e) => console.error('[dispatcher] startup run error', e));
 
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`feedback-service listening on 127.0.0.1:${PORT}`);
