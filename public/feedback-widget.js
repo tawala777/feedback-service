@@ -3,6 +3,7 @@
 
   const scriptTag = document.currentScript || document.querySelector('script[src*="feedback-widget.js"]');
   const SOURCE = scriptTag.getAttribute('data-source') || 'unknown';
+  const APP_NAME = scriptTag.getAttribute('data-app-name') || SOURCE;
   const USER_ID = scriptTag.getAttribute('data-user-id') || null;
   const SERVICE_URL = scriptTag.src.replace(/\/widget\/[^/]+$/, '');
 
@@ -58,6 +59,11 @@
     .fb-header-icon svg { width: 20px; height: 20px; }
     .fb-header-copy h3 { margin: 0 0 4px; font-size: 17px; line-height: 1.25; color: var(--fb-text); }
     .fb-header-copy p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--fb-text-soft); }
+    .fb-app-chip {
+      display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px; padding: 4px 10px;
+      border-radius: 999px; background: rgba(37, 99, 235, 0.10); color: var(--fb-primary-dark);
+      font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+    }
     .fb-close {
       width: 36px; height: 36px; border-radius: 10px; border: 0; background: rgba(148, 163, 184, 0.12);
       color: var(--fb-text-soft); cursor: pointer; font-size: 22px; line-height: 1; flex: 0 0 auto;
@@ -134,6 +140,7 @@
       <path d="M7 18.5c1.1.6 2.4 1 3.8 1H19a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10.5a2 2 0 0 0 2 2h1.2L7 22v-3.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
       <path d="M8 10h8M8 14h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
     </svg>`;
+  const safeAppName = String(APP_NAME).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const sendIcon = `
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M4 12 20 4l-4 16-4.5-5L4 12Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
@@ -156,6 +163,7 @@
         <div class="fb-header-main">
           <div class="fb-header-icon">${bubbleIcon}</div>
           <div class="fb-header-copy">
+            <div class="fb-app-chip">Application : ${safeAppName}</div>
             <h3 id="fb-title">Signaler un bug ou une amélioration</h3>
             <p>Décris le besoin. Le widget t’aide à cadrer le ticket avant envoi.</p>
           </div>

@@ -53,6 +53,7 @@ feedback-service/
 - Le widget statique est servi sous `/widget/*` avec `Cache-Control: public, max-age=300`
 - Les fichiers JS widget forcent `Content-Type: application/javascript; charset=utf-8`
 - Le widget utilise `document.currentScript` avec fallback `querySelector('script[src*="feedback-widget.js"]')`
+- Le header du widget affiche explicitement le nom de l'application : `data-app-name` si fourni, sinon fallback sur `data-source`
 - Charte widget actuelle : palette bleu nuit / bleu vif / neutres froids, bouton flottant circulaire avec icône bulle SVG, header de modale avec tuile icône, CTA primaires en dégradé, bulles user bleues et assistant blanches bordées
 - Le widget soumet le chat vers `/api/feedback/chat` puis, quand `readyForSubmit=true`, affiche un bouton "Envoyer le ticket" qui appelle `/api/feedback/submit`
 - Après submit réussi, le widget se réinitialise immédiatement : nouvelle `conversationId=null`, messages réinitialisés, champs re-réactivés, bouton submit masqué, et confirmation visible avant un nouveau cycle
@@ -76,6 +77,6 @@ feedback-service/
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #229 — source `demo` skip pour la page de test widget
-- **Etat courant spécifique :** `/widget/test.html` pointe vers `data-source="demo"`; l'app `demo` est seedée/garantie avec `skip=1`, et un submit de test termine en `dispatch_status='skipped'` sans créer de ticket Candy
-- **Prochaine étape :** #233 — séparation visuelle / signalement explicite des feedbacks ignorés (`skipped`) dans l'admin
+- **Dernier ticket :** #233 — affichage du nom d'application dans l'entête du widget
+- **Etat courant spécifique :** l'entête du widget affiche désormais `Application : <nom>` via `data-app-name` ou, à défaut, via `data-source`; validation visuelle faite sur `/widget/test.html` avec la source `demo`
+- **Prochaine étape :** #234 — dispatch robuste (payload unifié, erreur visible, re-post manuel)
