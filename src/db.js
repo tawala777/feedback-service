@@ -104,6 +104,10 @@ function finalizeConversation({ conversationId, ticketId, ticketDestination }) {
     .run(Date.now(), ticketId, ticketDestination, conversationId);
 }
 
+function setConversationUser(conversationId, userId) {
+  db.prepare('UPDATE conversations SET user_id = ? WHERE id = ?').run(userId, conversationId);
+}
+
 function markReadyForDispatch({ conversationId, submitSpec }) {
   db.prepare(
     `UPDATE conversations SET finalized_at = ?, submit_spec = ?, dispatch_status = 'pending' WHERE id = ?`
@@ -191,6 +195,7 @@ module.exports = {
   addMessage,
   getMessages,
   finalizeConversation,
+  setConversationUser,
   markReadyForDispatch,
   getPendingDispatch,
   markDispatched,

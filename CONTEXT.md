@@ -55,6 +55,7 @@ feedback-service/
 - Les fichiers JS widget forcent `Content-Type: application/javascript; charset=utf-8`
 - Le widget utilise `document.currentScript` avec fallback `querySelector('script[src*="feedback-widget.js"]')`
 - Le header du widget affiche explicitement le nom de l'application : `data-app-name` si fourni, sinon fallback sur `data-source`
+- Le widget expose un champ `Utilisateur` (optionnel) persisté en `localStorage` sous `fb-user`, renvoyé à `/api/feedback/chat` et `/api/feedback/submit`, puis affiché dans la colonne `User` de l'admin
 - Charte widget actuelle : palette bleu nuit / bleu vif / neutres froids, bouton flottant circulaire avec icône bulle SVG, header de modale avec tuile icône, CTA primaires en dégradé, bulles user bleues et assistant blanches bordées
 - Le widget soumet le chat vers `/api/feedback/chat` puis, quand `readyForSubmit=true`, affiche un bouton "Envoyer le ticket" qui appelle `/api/feedback/submit`
 - Après submit réussi, le widget se réinitialise immédiatement : nouvelle `conversationId=null`, messages réinitialisés, champs re-réactivés, bouton submit masqué, et confirmation visible avant un nouveau cycle
@@ -84,6 +85,6 @@ feedback-service/
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #240 — navigation admin commune + fix layout `/admin/apps`
-- **Etat courant spécifique :** les 3 pages admin utiles (`/admin/feedbacks`, `/admin/feedbacks/:id`, `/admin/apps`) sont maintenant navigables entre elles via une barre commune `Feedbacks | Apps`; `/widget/test.html` a un lien retour `← Admin`; le tableau `/admin/apps` wrappe `ticket_url` et garde la colonne `État` visible sur un écran standard
-- **Prochaine étape :** #241 — audit / nettoyage des tickets feedback-service
+- **Dernier ticket :** #241 — champ utilisateur persisté dans le widget
+- **Etat courant spécifique :** le widget propose désormais un champ `Utilisateur` optionnel persistant, pré-rempli au reload, envoyé à chaque étape du flux, et visible ensuite dans la colonne `User` de `/admin/feedbacks`
+- **Prochaine étape :** audit / nettoyage backlog feedback-service ou découpage de l'ex-ticket #236

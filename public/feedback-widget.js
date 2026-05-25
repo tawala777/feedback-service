@@ -6,6 +6,7 @@
   const APP_NAME = scriptTag.getAttribute('data-app-name') || SOURCE;
   const USER_ID = scriptTag.getAttribute('data-user-id') || null;
   const SERVICE_URL = scriptTag.src.replace(/\/widget\/[^/]+$/, '');
+  const USER_STORAGE_KEY = 'fb-user';
 
   let conversationId = null;
 
@@ -69,6 +70,15 @@
       color: var(--fb-text-soft); cursor: pointer; font-size: 22px; line-height: 1; flex: 0 0 auto;
     }
     .fb-close:hover { background: rgba(148, 163, 184, 0.2); color: var(--fb-text); }
+    .fb-userbar {
+      padding: 12px 16px; border-bottom: 1px solid var(--fb-border); background: #fff;
+    }
+    .fb-user-label { display:block; margin-bottom: 6px; font-size: 12px; color: var(--fb-text-soft); font-weight: 600; }
+    .fb-user-input {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--fb-border); border-radius: 10px;
+      background: var(--fb-surface-soft); color: var(--fb-text); font-size: 14px; outline: none;
+    }
+    .fb-user-input::placeholder { color: #94a3b8; }
     .fb-messages {
       flex: 1; overflow-y: auto; padding: 18px; background:
         radial-gradient(circle at top, rgba(219, 234, 254, 0.45), transparent 30%),
@@ -170,6 +180,10 @@
         </div>
         <button class="fb-close" type="button" aria-label="Fermer">×</button>
       </div>
+      <div class="fb-userbar">
+        <label class="fb-user-label" for="fb-user">Utilisateur</label>
+        <input id="fb-user" class="fb-user-input" type="text" placeholder="Ton nom / email (optionnel)">
+      </div>
       <div class="fb-messages"></div>
       <div class="fb-submit-bar">
         <p class="fb-submit-copy">Le cadrage est prêt. Tu peux maintenant envoyer le ticket à l’équipe.</p>
@@ -186,12 +200,29 @@
   root.appendChild(overlay);
 
   const messagesEl = overlay.querySelector('.fb-messages');
+  const userEl = overlay.querySelector('.fb-user-input');
   const inputEl = overlay.querySelector('.fb-input');
   const sendBtn = overlay.querySelector('.fb-send');
   const submitBar = overlay.querySelector('.fb-submit-bar');
   const submitBtn = overlay.querySelector('.fb-submit-btn');
   const INTRO_MESSAGE = 'Décris ton bug ou ton amélioration. Quelques questions vont suivre pour cadrer proprement le ticket.';
   const SUCCESS_MESSAGE = '✓ Feedback enregistré, merci. Tu peux en soumettre un nouveau si besoin.';
+
+  function safeGetStoredUser() {
+    try { return localStorage.getItem(USER_STORAGE_KEY) || ''; } catch { return ''; }
+  }
+
+  function safeSetStoredUser(value) {
+    try {
+      const v = String(value || '').trim();
+      if (v) localStorage.setItem(USER_STORAGE_KEY, v);
+      else localStorage.removeItem(USER_STORAGE_KEY);
+    } catch {}
+  }
+
+  function currentUserId() {
+    return userEl.value.trim() || USER_ID || null;
+  }
 
   function appendMsg(role, content) {
     const div = document.createElement('div');
@@ -207,11 +238,17 @@
     submitBtn.disabled = false;
     sendBtn.disabled = false;
     inputEl.disabled = false;
+    userEl.disabled = false;
     inputEl.value = '';
+    userEl.value = safeGetStoredUser() || USER_ID || '';
     messagesEl.innerHTML = '';
     if (successMessage) appendMsg('system', successMessage);
     appendMsg('system', INTRO_MESSAGE);
   }
+
+  userEl.value = safeGetStoredUser() || USER_ID || '';
+  userEl.addEventListener('input', () => safeSetStoredUser(userEl.value));
+  userEl.addEventListener('change', () => safeSetStoredUser(userEl.value));
 
   btn.onclick = () => {
     overlay.classList.add('open');
@@ -234,10 +271,11 @@
     sendBtn.disabled = true;
     appendMsg('user', text);
     try {
+      safeSetStoredUser(userEl.value);
       const resp = await fetch(`${SERVICE_URL}/api/feedback/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversationId, source: SOURCE, userId: USER_ID, message: text })
+        body: JSON.stringify({ conversationId, source: SOURCE, userId: currentUserId(), message: text })
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
@@ -262,10 +300,11 @@
   submitBtn.onclick = async () => {
     submitBtn.disabled = true;
     try {
+      safeSetStoredUser(userEl.value);
       const resp = await fetch(`${SERVICE_URL}/api/feedback/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversationId })
+        body: JSON.stringify({ conversationId, userId: currentUserId() })
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       await resp.json();

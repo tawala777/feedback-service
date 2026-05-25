@@ -308,6 +308,7 @@ app.post('/api/feedback/chat', async (req, res) => {
 
     let convId = conversationId;
     if (!convId) convId = dbModule.createConversation({ source, userId });
+    else if (userId && String(userId).trim()) dbModule.setConversationUser(convId, String(userId).trim());
 
     dbModule.addMessage({ conversationId: convId, role: 'user', content: message });
     const history = dbModule.getMessages(convId);
@@ -340,7 +341,7 @@ app.post('/api/feedback/chat', async (req, res) => {
 
 app.post('/api/feedback/submit', (req, res) => {
   try {
-    const { conversationId } = req.body;
+    const { conversationId, userId } = req.body;
     if (!conversationId) return res.status(400).json({ error: 'conversationId required' });
 
     const messages = dbModule.getMessages(conversationId);
@@ -352,6 +353,7 @@ app.post('/api/feedback/submit', (req, res) => {
     const spec = extractSubmitJson(lastAssistant.content);
     if (!spec) return res.status(400).json({ error: 'spec not finalized (no [READY_FOR_SUBMIT] marker)' });
 
+    if (userId && String(userId).trim()) dbModule.setConversationUser(conversationId, String(userId).trim());
     dbModule.markReadyForDispatch({ conversationId, submitSpec: spec });
     return res.json({ conversationId, status: 'queued' });
   } catch (err) {
