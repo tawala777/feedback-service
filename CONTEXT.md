@@ -25,7 +25,7 @@
 ```text
 feedback-service/
   src/
-    server.js        — bootstrap Express + CORS + health endpoint enrichi DB + API chat + API submit + service statique widget + planification dispatch
+    server.js        — bootstrap Express + CORS + health endpoint enrichi DB + API chat + API submit + dashboard admin + service statique widget + planification dispatch
     db.js            — accès SQLite, migrations conversations/messages, helpers CRUD + file de dispatch locale
     llm.js           — relais Groq (OpenAI-compatible), prompt de cadrage, fallback modèles, dégradation propre
     dispatcher.js    — drain asynchrone des conversations `pending/failed` vers les backlogs agents
@@ -56,11 +56,13 @@ feedback-service/
 - Colonnes de dispatch locales dans `conversations` : `submit_spec`, `dispatch_status`, `dispatch_attempts`, `last_dispatch_error`, `dispatched_at`
 - Le dispatcher tourne toutes les 2 minutes + un passage au démarrage du process via `runDispatch()`
 - Routing actuel : `bookingsExtApi`, `team-tracker`, `aam-website` -> Candy local (`http://localhost:4000/api/tickets`); `stats-v1` et `hotel-aggregator` -> Sandy via `SANDY_TICKETS_URL` (vide par défaut)
+- `/admin/feedbacks` affiche jusqu'à 200 conversations avec états : `draft`, `finalisé`, `en file`, `échec (retry)`, `envoyé`
+- Pour les lignes `envoyé`, le dashboard tente de lire le ticket agent courant et affiche son statut brut (`open`, `resolved`, `http 404`, `unreachable`, etc.) sans jamais casser la page
 - PM2 process name: `feedback-service`
 
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #220 — widget complet (bouton flottant + modale chat + submit async)
-- **Etat courant spécifique :** `/widget/test.html` charge le widget, affiche le bouton flottant, ouvre une modale de chat, révèle le bouton "Envoyer le ticket" quand `readyForSubmit=true`, puis affiche `✓ Feedback enregistré, merci.` après submit réussi; les données de test ont été nettoyées pour ne pas alimenter le dispatcher
-- **Prochaine étape :** #221 — dashboard admin `/admin/feedbacks`
+- **Dernier ticket :** #221 — dashboard admin `/admin/feedbacks`
+- **Etat courant spécifique :** `http://localhost:4400/admin/feedbacks` liste les conversations, leur état de dispatch et, pour les feedbacks envoyés, l'état courant du ticket agent; les tickets de test supprimés remontent naturellement en `http 404` côté dashboard sans casser l'affichage
+- **Prochaine étape :** aucun ticket feedback-service ouvert
