@@ -6,7 +6,7 @@ const cors = require('cors');
 const multer = require('multer');
 const dbModule = require('./db');
 const { getRoute } = require('./routing');
-const { chat, extractSubmitJson } = require('./llm');
+const { chat, extractSubmitJson, llmConfig } = require('./llm');
 const { runDispatch } = require('./dispatcher');
 
 const app = express();
@@ -36,6 +36,37 @@ app.use(cors({ origin: ORIGINS }));
 const LLM_DOWN_MESSAGE = 'Le service de cadrage est momentanément indisponible. Réessaie dans un instant.';
 
 const MAX_DISPATCH_ATTEMPTS = 5;
+const DISPATCHER_INTERVAL_MS = 2 * 60 * 1000;
+
+function getServiceUrl() {
+  return process.env.FEEDBACK_SERVICE_URL || process.env.SERVICE_URL || `http://localhost:${PORT}`;
+}
+
+function getAdminEnvSnapshot() {
+  const counts = dbModule.counts();
+  return {
+    port: Number(PORT) || PORT,
+    serviceUrl: getServiceUrl(),
+    corsOrigins: ORIGINS,
+    sandyTicketsUrl: process.env.SANDY_TICKETS_URL || null,
+    llm: {
+      provider: llmConfig.provider,
+      baseUrl: llmConfig.baseUrl,
+      models: llmConfig.models,
+      maxTokens: llmConfig.maxTokens,
+      temperature: llmConfig.temperature,
+      apiKeyConfigured: !!process.env.GROQ_API_KEY
+    },
+    anthropicKeyConfigured: !!process.env.ANTHROPIC_API_KEY,
+    db: {
+      conversations: counts.conversations,
+      messages: counts.messages,
+      path: 'data/conversations.db'
+    },
+    dispatcherIntervalMs: DISPATCHER_INTERVAL_MS,
+    nodeEnv: process.env.NODE_ENV || null
+  };
+}
 
 function dispatchLabel(c) {
   if (!c.dispatch_status) return c.finalized_at ? 'finalisé' : 'draft';
@@ -78,7 +109,109 @@ function renderNav(active) {
   const item = (key, href, label) => active === key
     ? `<strong>${label}</strong>`
     : `<a href="${href}">${label}</a>`;
-  return `<nav class="topnav">${item('feedbacks', '/admin/feedbacks', 'Feedbacks')} <span class="sep">|</span> ${item('apps', '/admin/apps', 'Apps')} <span class="sep">|</span> ${item('new', '/widget/new.html', 'New')}</nav>`;
+  return `<nav class="topnav" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+    <div class="topnav-links">${item('feedbacks', '/admin/feedbacks', 'Feedbacks')} <span class="sep">|</span> ${item('apps', '/admin/apps', 'Apps')} <span class="sep">|</span> ${item('new', '/widget/new.html', 'New')}</div>
+    <div class="env-badge-wrap" style="position:relative;display:inline-flex;align-items:center;">
+      <button type="button" class="env-badge" aria-expanded="false" style="border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:999px;padding:3px 9px;font-size:12px;font-weight:700;cursor:pointer;">env</button>
+      <div class="env-panel" hidden style="position:absolute;right:0;top:calc(100% - 1px);width:min(420px, calc(100vw - 40px));background:#ffffff;border:1px solid #cbd5e1;border-radius:12px;box-shadow:0 18px 40px rgba(15,23,42,.18);padding:12px 14px;z-index:50;color:#0f172a;">
+        <div class="env-panel-content" style="font-size:13px;line-height:1.45;color:#475569;">Chargement…</div>
+      </div>
+    </div>
+  </nav>
+  <script>
+    (function () {
+      const wrap = document.currentScript.previousElementSibling?.querySelector('.env-badge-wrap');
+      if (!wrap) return;
+      const badge = wrap.querySelector('.env-badge');
+      const panel = wrap.querySelector('.env-panel');
+      const content = wrap.querySelector('.env-panel-content');
+      let closeTimer = null;
+      let loaded = false;
+      let loading = false;
+
+      function esc(value) {
+        return String(value ?? '').replace(/[&<>\"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+      }
+
+      function boolMark(ok) {
+        return ok ? '✓' : '✗';
+      }
+
+      function formatList(values) {
+        return Array.isArray(values) && values.length ? values.map((v) => esc(v)).join('<br>') : '<span style="color:#94a3b8">—</span>';
+      }
+
+      function renderEnv(data) {
+        const sandy = data.sandyTicketsUrl ? esc(data.sandyTicketsUrl) : '<span style="color:#94a3b8">null</span>';
+        return [
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">',
+          '<strong style="font-size:13px;color:#0f172a;">Configuration du service</strong>',
+          '<span style="font-size:12px;color:#64748b;">lecture seule</span>',
+          '</div>',
+          '<div style="display:grid;grid-template-columns:120px 1fr;gap:6px 10px;align-items:start;">',
+          '<div><strong>Port</strong></div><div>' + esc(data.port) + '</div>',
+          '<div><strong>Service URL</strong></div><div style="overflow-wrap:anywhere;">' + esc(data.serviceUrl) + '</div>',
+          '<div><strong>CORS</strong></div><div style="overflow-wrap:anywhere;">' + formatList(data.corsOrigins) + '</div>',
+          '<div><strong>Sandy URL</strong></div><div style="overflow-wrap:anywhere;">' + sandy + '<div style="font-size:12px;color:#64748b;">routage réel = table apps</div></div>',
+          '<div><strong>LLM</strong></div><div>' + esc(data.llm.provider) + ' · ' + formatList(data.llm.models) + '</div>',
+          '<div><strong>GROQ key</strong></div><div>' + boolMark(data.llm.apiKeyConfigured) + ' ' + (data.llm.apiKeyConfigured ? 'configurée' : 'absente') + '</div>',
+          '<div><strong>Anthropic</strong></div><div>' + boolMark(data.anthropicKeyConfigured) + ' ' + (data.anthropicKeyConfigured ? 'présente (legacy)' : 'absente') + '</div>',
+          '<div><strong>DB</strong></div><div>' + esc(data.db.path) + ' · ' + esc(data.db.conversations) + ' conv / ' + esc(data.db.messages) + ' msgs</div>',
+          '<div><strong>Dispatcher</strong></div><div>' + esc(data.dispatcherIntervalMs) + ' ms</div>',
+          '<div><strong>Node env</strong></div><div>' + (data.nodeEnv ? esc(data.nodeEnv) : '<span style="color:#94a3b8">null</span>') + '</div>',
+          '</div>'
+        ].join('');
+      }
+
+      async function ensureLoaded() {
+        if (loaded || loading) return;
+        loading = true;
+        content.textContent = 'Chargement…';
+        try {
+          const resp = await fetch('/api/admin/env');
+          const data = await resp.json();
+          if (!resp.ok) throw new Error(data.error || ('HTTP ' + resp.status));
+          content.innerHTML = renderEnv(data);
+          loaded = true;
+        } catch (err) {
+          content.innerHTML = '<span style="color:#b91c1c;">Impossible de charger la config : ' + esc(err.message || err) + '</span>';
+        } finally {
+          loading = false;
+        }
+      }
+
+      function openPanel() {
+        clearTimeout(closeTimer);
+        panel.hidden = false;
+        badge.setAttribute('aria-expanded', 'true');
+        ensureLoaded();
+      }
+
+      function closePanelSoon() {
+        clearTimeout(closeTimer);
+        closeTimer = setTimeout(() => {
+          panel.hidden = true;
+          badge.setAttribute('aria-expanded', 'false');
+        }, 120);
+      }
+
+      wrap.addEventListener('mouseenter', openPanel);
+      wrap.addEventListener('mouseleave', closePanelSoon);
+      panel.addEventListener('mouseenter', openPanel);
+      panel.addEventListener('mouseleave', closePanelSoon);
+      badge.addEventListener('focus', openPanel);
+      badge.addEventListener('blur', closePanelSoon);
+      badge.addEventListener('click', (event) => {
+        event.preventDefault();
+        if (panel.hidden) openPanel();
+        else {
+          clearTimeout(closeTimer);
+          panel.hidden = true;
+          badge.setAttribute('aria-expanded', 'false');
+        }
+      });
+    })();
+  </script>`;
 }
 
 function renderDashboard(conversations) {
@@ -364,6 +497,10 @@ app.get('/api/admin/apps', (req, res) => {
   res.json(dbModule.listApps());
 });
 
+app.get('/api/admin/env', (req, res) => {
+  res.json(getAdminEnvSnapshot());
+});
+
 app.post('/api/admin/apps', (req, res) => {
   const { slug, agent } = req.body;
   if (!slug) return res.status(400).json({ error: 'slug requis' });
@@ -542,7 +679,7 @@ app.use('/widget', express.static(path.join(__dirname, '..', 'public'), {
   }
 }));
 
-setInterval(() => runDispatch().catch((e) => console.error('[dispatcher] run error', e)), 2 * 60 * 1000);
+setInterval(() => runDispatch().catch((e) => console.error('[dispatcher] run error', e)), DISPATCHER_INTERVAL_MS);
 runDispatch().catch((e) => console.error('[dispatcher] startup run error', e));
 
 app.listen(PORT, '127.0.0.1', () => {

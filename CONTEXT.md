@@ -73,6 +73,7 @@ feedback-service/
 - Le dispatcher tourne toutes les 2 minutes + un passage au démarrage du process via `runDispatch()`
 - Routing actuel : `bookingsExtApi`, `team-tracker`, `aam-website` -> Candy local (`http://localhost:4000/api/tickets`); `stats-v1` et `hotel-aggregator` -> Sandy via `SANDY_TICKETS_URL` (vide par défaut)
 - Une barre de navigation commune `Feedbacks | Apps | New` est rendue en haut de `/admin/feedbacks`, `/admin/feedbacks/:id` et `/admin/apps`, avec mise en évidence de la page courante
+- Cette nav expose aussi un badge `env` à droite : au survol/clic, un panneau lazy-loadé lit `/api/admin/env` et affiche la config runtime du service sans jamais exposer de secret en clair
 - `/admin/feedbacks` affiche jusqu'à 200 conversations avec états : `draft`, `finalisé`, `en file`, `échec (retry)`, `envoyé`
 - Chaque ligne de `/admin/feedbacks` pointe vers `/admin/feedbacks/:id`
 - `/admin/feedbacks/:id` affiche l'échange complet, les captures jointes (`attachments`), la spec soumise (`submit_spec`) et l'état ticket enrichi si disponible
@@ -81,6 +82,7 @@ feedback-service/
 - Pour les lignes `skipped` issues d'un doublon, la liste montre un badge/lien `Doublon · voir original`, et la vue détail affiche un bloc `Doublon détecté` avec lien vers l'original
 - `POST /admin/feedbacks/:id/redispatch` est limité aux conversations `failed` : il remet `pending`, remet les compteurs à zéro, puis le dispatcher la reprend au cycle suivant
 - `/api/admin/apps` expose les apps en JSON ; `POST /api/admin/apps` crée/édite une app et recalcule `configured` selon la présence d'un `agent`
+- `/api/admin/env` expose un snapshot de diagnostic sans secret : port, serviceUrl, CORS, `SANDY_TICKETS_URL`, config LLM Groq (modèles/baseUrl/maxTokens/temp + booléen `apiKeyConfigured`), booléen `anthropicKeyConfigured`, compteurs DB, intervalle dispatcher, `NODE_ENV`
 - `/admin/apps` affiche le tableau des apps + un formulaire simple de configuration, avec badge visible `⚠ à configurer` quand `configured=0`
 - Le champ `ticket_url` du formulaire admin utilise un placeholder explicitement indicatif (`ex. ... — vide = non routé`) et les placeholders y sont rendus en italique/gris léger pour éviter la confusion avec une valeur réellement saisie
 - Chaque ligne de `/admin/apps` propose désormais un bouton `Éditer` qui pré-remplit immédiatement le formulaire du bas (édition rapide inline, sans nouvelle page)
@@ -93,6 +95,6 @@ feedback-service/
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #251 — page `New` dans le menu admin
-- **Etat courant spécifique :** la page de création de feedback est maintenant servie sous `/widget/new.html` (renommage de `public/test.html` via `git mv`) et la navigation admin expose `Feedbacks | Apps | New`, vérifiés sur le HTML servi par `feedback-service`
-- **Prochaine étape :** nettoyer le ticket de test #253 ou poursuivre le backlog feedback-service restant
+- **Dernier ticket :** #254 — badge `env` + panneau de config admin
+- **Etat courant spécifique :** l’admin expose maintenant un badge `env` à droite de la nav ; il charge paresseusement `/api/admin/env`, affiche la config utile du service (sans secret) dans un panneau hover/click, et reste atteignable sans zone morte entre badge et panneau
+- **Prochaine étape :** #255 — panneau `ⓘ` dans le widget avec source/user/destination/mode

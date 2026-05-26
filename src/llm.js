@@ -127,4 +127,14 @@ function extractSubmitJson(text) {
   }
 }
 
-module.exports = { chat, extractSubmitJson };
+module.exports = {
+  chat,
+  extractSubmitJson,
+  llmConfig: {
+    provider: 'groq',
+    baseUrl: GROQ_BASE_URL,
+    models: GROQ_MODELS,
+    maxTokens: MAX_TOKENS,
+    temperature: TEMPERATURE
+  }
+};
