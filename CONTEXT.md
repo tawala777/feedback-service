@@ -61,6 +61,7 @@ feedback-service/
 - Le header du widget affiche explicitement le nom de l'application : `data-app-name` si fourni, sinon fallback sur `data-source`
 - Le widget expose un champ `Utilisateur` (optionnel) persisté en `localStorage` sous `fb-user`, renvoyé à `/api/feedback/chat` et `/api/feedback/submit`, puis affiché dans la colonne `User` de l'admin
 - Le widget affiche aussi un bouton `ⓘ` discret dans le header : il ouvre un panneau local avec la source, l’utilisateur stocké dans `localStorage`, la destination de routage, le mode (`VRAI ticket` / `SKIP (demo), aucun ticket` / `a configurer` / `en attente`) et `serviceUrl`
+- Ce panneau `ⓘ` est désormais ancré sur le header de la modale (et non sur le petit wrapper du bouton) avec insets `left/right`, pour rester entièrement dans la carte sans déborder à gauche sur desktop ni mobile
 - Le widget supporte aussi les images : bouton `📎` (fichier) + collage presse-papier image dans le textarea, upload via `POST /api/feedback/upload`, stockage disque sous `public/uploads/feedback/`
 - Charte widget actuelle : palette bleu nuit / bleu vif / neutres froids, bouton flottant circulaire avec icône bulle SVG, header de modale avec tuile icône, CTA primaires en dégradé, bulles user bleues et assistant blanches bordées
 - Le widget soumet le chat vers `/api/feedback/chat` puis, quand `readyForSubmit=true`, affiche un bouton "Envoyer le ticket" qui appelle `/api/feedback/submit`
@@ -97,6 +98,6 @@ feedback-service/
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #255 — panneau `ⓘ` dans le widget
-- **Etat courant spécifique :** le widget peut maintenant afficher, au clic sur `ⓘ`, la source, le user localStorage, la destination de routage, le mode du feedback et `serviceUrl`, via un fetch lazy de `/api/feedback/route-info` sans aucune fuite de secret
+- **Dernier ticket :** #256 — correction du positionnement du panneau `ⓘ`
+- **Etat courant spécifique :** le panneau d’infos du widget reste maintenant entièrement dans la modale grâce à un ancrage sur le header (`left/right` fixes dans la carte, plus de `right:0` sur le wrapper du bouton), sans déborder à gauche hors de la carte
 - **Prochaine étape :** nouveau backlog feedback-service ou fin du lot d’observabilité widget/admin
