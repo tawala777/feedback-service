@@ -65,6 +65,21 @@ function migrate() {
     );
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS attachments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      conversation_id TEXT NOT NULL,
+      filename TEXT NOT NULL,
+      mime_type TEXT,
+      file_size INTEGER,
+      disk_path TEXT,
+      public_url TEXT,
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY (conversation_id) REFERENCES conversations(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_attachments_conv ON attachments(conversation_id, id);
+  `);
+
   const n = db.prepare('SELECT COUNT(1) AS n FROM apps').get().n;
   if (n === 0) {
     const now = Date.now();
@@ -99,6 +114,20 @@ function addMessage({ conversationId, role, content }) {
 function getMessages(conversationId) {
   return db.prepare('SELECT role, content, created_at FROM messages WHERE conversation_id = ? ORDER BY id ASC')
     .all(conversationId);
+}
+
+function addAttachment({ conversationId, filename, mimeType, fileSize, diskPath, publicUrl }) {
+  db.prepare(`INSERT INTO attachments (conversation_id, filename, mime_type, file_size, disk_path, public_url, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?)`)
+    .run(conversationId, filename, mimeType || null, fileSize ?? null, diskPath || null, publicUrl || null, Date.now());
+}
+
+function listAttachments(conversationId) {
+  return db.prepare('SELECT * FROM attachments WHERE conversation_id = ? ORDER BY id ASC').all(conversationId);
+}
+
+function getConversationForDispatch(conversationId) {
+  return db.prepare('SELECT * FROM conversations WHERE id = ?').get(conversationId) || null;
 }
 
 function finalizeConversation({ conversationId, ticketId, ticketDestination }) {
@@ -222,6 +251,9 @@ module.exports = {
   createConversation,
   addMessage,
   getMessages,
+  addAttachment,
+  listAttachments,
+  getConversationForDispatch,
   finalizeConversation,
   setConversationUser,
   markReadyForDispatch,
