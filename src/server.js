@@ -68,6 +68,29 @@ function getAdminEnvSnapshot() {
   };
 }
 
+function getRouteInfoSnapshot(source) {
+  const route = getRoute(source);
+  const snapshot = {
+    source,
+    agent: route?.agent || null,
+    mission: route?.mission || null,
+    lot: route?.lot ?? null,
+    wave: route?.wave ?? null,
+    skip: !!route?.skip,
+    configured: !!route?.configured,
+    ticketUrl: route?.url || null,
+    serviceUrl: getServiceUrl()
+  };
+  snapshot.mode = snapshot.skip
+    ? 'skip'
+    : !snapshot.configured
+      ? 'a-configurer'
+      : !snapshot.ticketUrl
+        ? 'en-attente'
+        : 'ticket';
+  return snapshot;
+}
+
 function dispatchLabel(c) {
   if (!c.dispatch_status) return c.finalized_at ? 'finalisé' : 'draft';
   return { pending: 'en file', failed: 'échec (retry)', sent: 'envoyé', skipped: c.duplicate_of ? 'doublon ignoré' : 'ignoré' }[c.dispatch_status] || c.dispatch_status;
@@ -499,6 +522,11 @@ app.get('/api/admin/apps', (req, res) => {
 
 app.get('/api/admin/env', (req, res) => {
   res.json(getAdminEnvSnapshot());
+});
+
+app.get('/api/feedback/route-info', (req, res) => {
+  const source = String(req.query.source || '').trim() || 'unknown';
+  res.json(getRouteInfoSnapshot(source));
 });
 
 app.post('/api/admin/apps', (req, res) => {

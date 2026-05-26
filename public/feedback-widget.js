@@ -60,11 +60,28 @@
     .fb-header-icon svg { width: 20px; height: 20px; }
     .fb-header-copy h3 { margin: 0 0 4px; font-size: 17px; line-height: 1.25; color: var(--fb-text); }
     .fb-header-copy p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--fb-text-soft); }
+    .fb-header-top { display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
     .fb-app-chip {
-      display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px; padding: 4px 10px;
+      display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
       border-radius: 999px; background: rgba(37, 99, 235, 0.10); color: var(--fb-primary-dark);
       font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
     }
+    .fb-info-wrap { position: relative; display:inline-flex; align-items:center; }
+    .fb-info-btn {
+      width: 24px; height: 24px; border-radius: 999px; border: 1px solid rgba(37,99,235,.18);
+      background: rgba(255,255,255,.88); color: var(--fb-primary-dark); cursor: pointer;
+      display:inline-flex; align-items:center; justify-content:center; font-size: 13px; font-weight: 700;
+    }
+    .fb-info-btn:hover { background:#fff; border-color: rgba(37,99,235,.35); }
+    .fb-info-panel {
+      position:absolute; top:calc(100% - 1px); right:0; width:min(320px, calc(100vw - 56px));
+      background:#fff; border:1px solid var(--fb-border); border-radius:14px; padding:12px 14px;
+      box-shadow: 0 18px 34px rgba(15,23,42,.16); z-index:3; color:var(--fb-text);
+    }
+    .fb-info-panel[hidden] { display:none; }
+    .fb-info-title { font-size:13px; font-weight:700; color:var(--fb-text); margin-bottom:8px; }
+    .fb-info-grid { display:grid; grid-template-columns:92px 1fr; gap:6px 10px; font-size:12px; line-height:1.45; color:var(--fb-text-soft); }
+    .fb-info-grid strong { color:var(--fb-text); }
     .fb-close {
       width: 36px; height: 36px; border-radius: 10px; border: 0; background: rgba(148, 163, 184, 0.12);
       color: var(--fb-text-soft); cursor: pointer; font-size: 22px; line-height: 1; flex: 0 0 auto;
@@ -159,7 +176,8 @@
       <path d="M7 18.5c1.1.6 2.4 1 3.8 1H19a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10.5a2 2 0 0 0 2 2h1.2L7 22v-3.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
       <path d="M8 10h8M8 14h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
     </svg>`;
-  const safeAppName = String(APP_NAME).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const safeAppName = escapeHtml(APP_NAME);
   const sendIcon = `
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M4 12 20 4l-4 16-4.5-5L4 12Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
@@ -182,7 +200,16 @@
         <div class="fb-header-main">
           <div class="fb-header-icon">${bubbleIcon}</div>
           <div class="fb-header-copy">
-            <div class="fb-app-chip">Application : ${safeAppName}</div>
+            <div class="fb-header-top">
+              <div class="fb-app-chip">Application : ${safeAppName}</div>
+              <div class="fb-info-wrap">
+                <button class="fb-info-btn" type="button" aria-label="Voir les infos de routage" aria-expanded="false">ⓘ</button>
+                <div class="fb-info-panel" hidden>
+                  <div class="fb-info-title">Infos de feedback</div>
+                  <div class="fb-info-content">Chargement…</div>
+                </div>
+              </div>
+            </div>
             <h3 id="fb-title">Signaler un bug ou une amélioration</h3>
             <p>Décris le besoin. Le widget t’aide à cadrer le ticket avant envoi.</p>
           </div>
@@ -214,6 +241,9 @@
   root.appendChild(overlay);
 
   const messagesEl = overlay.querySelector('.fb-messages');
+  const infoBtn = overlay.querySelector('.fb-info-btn');
+  const infoPanel = overlay.querySelector('.fb-info-panel');
+  const infoContent = overlay.querySelector('.fb-info-content');
   const userEl = overlay.querySelector('.fb-user-input');
   const inputEl = overlay.querySelector('.fb-input');
   const sendBtn = overlay.querySelector('.fb-send');
@@ -224,6 +254,8 @@
   const submitBtn = overlay.querySelector('.fb-submit-btn');
   const INTRO_MESSAGE = 'Décris ton bug ou ton amélioration. Quelques questions vont suivre pour cadrer proprement le ticket.';
   const SUCCESS_MESSAGE = '✓ Feedback enregistré, merci. Tu peux en soumettre un nouveau si besoin.';
+  let routeInfo = null;
+  let routeInfoLoading = false;
 
   function safeGetStoredUser() {
     try { return localStorage.getItem(USER_STORAGE_KEY) || ''; } catch { return ''; }
@@ -239,6 +271,63 @@
 
   function currentUserId() {
     return userEl.value.trim() || USER_ID || null;
+  }
+
+  function modeLabel(mode) {
+    if (mode === 'ticket') return 'VRAI ticket';
+    if (mode === 'skip') return 'SKIP (demo), aucun ticket';
+    if (mode === 'en-attente') return 'en attente';
+    return 'a configurer';
+  }
+
+  function formatDestination(info) {
+    const parts = [];
+    if (info.agent) parts.push(info.agent);
+    if (info.mission) parts.push('mission ' + info.mission);
+    if (info.lot != null) parts.push('lot ' + info.lot);
+    if (info.wave != null) parts.push('wave ' + info.wave);
+    return parts.length ? parts.join(' . ') : '(non configurée)';
+  }
+
+  function renderRouteInfo() {
+    const storedUser = safeGetStoredUser() || userEl.value.trim() || '(non renseigné)';
+    if (!routeInfo) {
+      infoContent.textContent = 'Chargement…';
+      return;
+    }
+    infoContent.innerHTML = `
+      <div class="fb-info-grid">
+        <div><strong>Source</strong></div><div>${escapeHtml(routeInfo.source)}</div>
+        <div><strong>Utilisateur</strong></div><div>${escapeHtml(storedUser)}</div>
+        <div><strong>Destination</strong></div><div>${escapeHtml(formatDestination(routeInfo))}</div>
+        <div><strong>Mode</strong></div><div>${escapeHtml(modeLabel(routeInfo.mode))}</div>
+        <div><strong>Service</strong></div><div>${escapeHtml(routeInfo.serviceUrl)}</div>
+      </div>`;
+  }
+
+  async function ensureRouteInfoLoaded() {
+    if (routeInfo || routeInfoLoading) return;
+    routeInfoLoading = true;
+    infoContent.textContent = 'Chargement…';
+    try {
+      const resp = await fetch(`${SERVICE_URL}/api/feedback/route-info?source=${encodeURIComponent(SOURCE)}`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      routeInfo = await resp.json();
+      renderRouteInfo();
+    } catch (err) {
+      infoContent.textContent = `Erreur : ${err.message}`;
+    } finally {
+      routeInfoLoading = false;
+    }
+  }
+
+  function setInfoPanel(open) {
+    infoPanel.hidden = !open;
+    infoBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) {
+      renderRouteInfo();
+      ensureRouteInfoLoaded();
+    }
   }
 
   function appendMsg(role, content) {
@@ -293,8 +382,10 @@
   }
 
   userEl.value = safeGetStoredUser() || USER_ID || '';
-  userEl.addEventListener('input', () => safeSetStoredUser(userEl.value));
-  userEl.addEventListener('change', () => safeSetStoredUser(userEl.value));
+  userEl.addEventListener('input', () => { safeSetStoredUser(userEl.value); if (!infoPanel.hidden) renderRouteInfo(); });
+  userEl.addEventListener('change', () => { safeSetStoredUser(userEl.value); if (!infoPanel.hidden) renderRouteInfo(); });
+
+  infoBtn.addEventListener('click', () => setInfoPanel(infoPanel.hidden));
 
   btn.onclick = () => {
     overlay.classList.add('open');
@@ -304,10 +395,10 @@
     }
   };
 
-  overlay.querySelector('.fb-close').onclick = () => overlay.classList.remove('open');
-  overlay.onclick = (e) => { if (e.target === overlay) overlay.classList.remove('open'); };
+  overlay.querySelector('.fb-close').onclick = () => { setInfoPanel(false); overlay.classList.remove('open'); };
+  overlay.onclick = (e) => { if (e.target === overlay) { setInfoPanel(false); overlay.classList.remove('open'); } };
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && overlay.classList.contains('open')) overlay.classList.remove('open');
+    if (e.key === 'Escape' && overlay.classList.contains('open')) { setInfoPanel(false); overlay.classList.remove('open'); }
   });
 
   async function send() {

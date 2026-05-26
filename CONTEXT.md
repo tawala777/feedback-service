@@ -60,6 +60,7 @@ feedback-service/
 - Le widget utilise `document.currentScript` avec fallback `querySelector('script[src*="feedback-widget.js"]')`
 - Le header du widget affiche explicitement le nom de l'application : `data-app-name` si fourni, sinon fallback sur `data-source`
 - Le widget expose un champ `Utilisateur` (optionnel) persisté en `localStorage` sous `fb-user`, renvoyé à `/api/feedback/chat` et `/api/feedback/submit`, puis affiché dans la colonne `User` de l'admin
+- Le widget affiche aussi un bouton `ⓘ` discret dans le header : il ouvre un panneau local avec la source, l’utilisateur stocké dans `localStorage`, la destination de routage, le mode (`VRAI ticket` / `SKIP (demo), aucun ticket` / `a configurer` / `en attente`) et `serviceUrl`
 - Le widget supporte aussi les images : bouton `📎` (fichier) + collage presse-papier image dans le textarea, upload via `POST /api/feedback/upload`, stockage disque sous `public/uploads/feedback/`
 - Charte widget actuelle : palette bleu nuit / bleu vif / neutres froids, bouton flottant circulaire avec icône bulle SVG, header de modale avec tuile icône, CTA primaires en dégradé, bulles user bleues et assistant blanches bordées
 - Le widget soumet le chat vers `/api/feedback/chat` puis, quand `readyForSubmit=true`, affiche un bouton "Envoyer le ticket" qui appelle `/api/feedback/submit`
@@ -83,6 +84,7 @@ feedback-service/
 - `POST /admin/feedbacks/:id/redispatch` est limité aux conversations `failed` : il remet `pending`, remet les compteurs à zéro, puis le dispatcher la reprend au cycle suivant
 - `/api/admin/apps` expose les apps en JSON ; `POST /api/admin/apps` crée/édite une app et recalcule `configured` selon la présence d'un `agent`
 - `/api/admin/env` expose un snapshot de diagnostic sans secret : port, serviceUrl, CORS, `SANDY_TICKETS_URL`, config LLM Groq (modèles/baseUrl/maxTokens/temp + booléen `apiKeyConfigured`), booléen `anthropicKeyConfigured`, compteurs DB, intervalle dispatcher, `NODE_ENV`
+- `/api/feedback/route-info?source=<slug>` expose, sans secret, le routage widget courant : `source`, `agent`, `mission`, `lot`, `wave`, `skip`, `configured`, `ticketUrl`, `serviceUrl`, `mode` (`ticket`|`skip`|`a-configurer`|`en-attente`)
 - `/admin/apps` affiche le tableau des apps + un formulaire simple de configuration, avec badge visible `⚠ à configurer` quand `configured=0`
 - Le champ `ticket_url` du formulaire admin utilise un placeholder explicitement indicatif (`ex. ... — vide = non routé`) et les placeholders y sont rendus en italique/gris léger pour éviter la confusion avec une valeur réellement saisie
 - Chaque ligne de `/admin/apps` propose désormais un bouton `Éditer` qui pré-remplit immédiatement le formulaire du bas (édition rapide inline, sans nouvelle page)
@@ -95,6 +97,6 @@ feedback-service/
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #254 — badge `env` + panneau de config admin
-- **Etat courant spécifique :** l’admin expose maintenant un badge `env` à droite de la nav ; il charge paresseusement `/api/admin/env`, affiche la config utile du service (sans secret) dans un panneau hover/click, et reste atteignable sans zone morte entre badge et panneau
-- **Prochaine étape :** #255 — panneau `ⓘ` dans le widget avec source/user/destination/mode
+- **Dernier ticket :** #255 — panneau `ⓘ` dans le widget
+- **Etat courant spécifique :** le widget peut maintenant afficher, au clic sur `ⓘ`, la source, le user localStorage, la destination de routage, le mode du feedback et `serviceUrl`, via un fetch lazy de `/api/feedback/route-info` sans aucune fuite de secret
+- **Prochaine étape :** nouveau backlog feedback-service ou fin du lot d’observabilité widget/admin
