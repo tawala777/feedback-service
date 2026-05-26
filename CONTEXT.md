@@ -33,7 +33,7 @@ feedback-service/
     routing.js       — accès au routing via `getRoute(slug)` / `listApps()` depuis SQLite
   public/
     feedback-widget.js — widget flottant complet (modale chat + submit async + charte visuelle unifiée)
-    test.html          — page locale de validation manuelle du widget
+    new.html           — page locale de création d’un nouveau feedback (sélecteur de source + widget)
   data/              — stockage local SQLite (`conversations.db`)
 ```
 
@@ -46,7 +46,7 @@ feedback-service/
 - SQLite en mode WAL
 - Le routing des apps n'est plus codé en dur : table SQLite `apps` + helper `getRoute(slug)`
 - Seed initial de `apps` : `bookingsExtApi`, `team-tracker`, `aam-website`, `stats-v1`, `hotel-aggregator`
-- L'app système `demo` est garantie au boot via `upsertApp(...)` avec `skip=1`, `configured=1`, `active=1` pour la page locale `/widget/test.html`
+- L'app système `demo` est garantie au boot via `upsertApp(...)` avec `skip=1`, `configured=1`, `active=1` pour la page locale `/widget/new.html`
 - `listApps()` / `getApp()` / `discoverApp()` / `upsertApp()` vivent dans `src/db.js`; `routing.js` ne contient plus de mapping statique
 - Une source inconnue n'est plus rejetée au dispatch : elle est auto-créée dans `apps` avec `configured=0`, sans destination, et le feedback reste `pending` tant qu'un dev n'est pas assigné
 - Une source avec `skip=1` est consommée par le dispatcher en `dispatch_status='skipped'` et ne crée jamais de ticket backlog
@@ -72,7 +72,7 @@ feedback-service/
 - Colonnes de dispatch locales dans `conversations` : `submit_spec`, `dispatch_status`, `dispatch_attempts`, `last_dispatch_error`, `dispatched_at`
 - Le dispatcher tourne toutes les 2 minutes + un passage au démarrage du process via `runDispatch()`
 - Routing actuel : `bookingsExtApi`, `team-tracker`, `aam-website` -> Candy local (`http://localhost:4000/api/tickets`); `stats-v1` et `hotel-aggregator` -> Sandy via `SANDY_TICKETS_URL` (vide par défaut)
-- Une barre de navigation commune `Feedbacks | Apps` est rendue en haut de `/admin/feedbacks`, `/admin/feedbacks/:id` et `/admin/apps`, avec mise en évidence de la page courante
+- Une barre de navigation commune `Feedbacks | Apps | New` est rendue en haut de `/admin/feedbacks`, `/admin/feedbacks/:id` et `/admin/apps`, avec mise en évidence de la page courante
 - `/admin/feedbacks` affiche jusqu'à 200 conversations avec états : `draft`, `finalisé`, `en file`, `échec (retry)`, `envoyé`
 - Chaque ligne de `/admin/feedbacks` pointe vers `/admin/feedbacks/:id`
 - `/admin/feedbacks/:id` affiche l'échange complet, les captures jointes (`attachments`), la spec soumise (`submit_spec`) et l'état ticket enrichi si disponible
@@ -85,14 +85,14 @@ feedback-service/
 - Le champ `ticket_url` du formulaire admin utilise un placeholder explicitement indicatif (`ex. ... — vide = non routé`) et les placeholders y sont rendus en italique/gris léger pour éviter la confusion avec une valeur réellement saisie
 - Chaque ligne de `/admin/apps` propose désormais un bouton `Éditer` qui pré-remplit immédiatement le formulaire du bas (édition rapide inline, sans nouvelle page)
 - Le tableau `apps` wrappe désormais `ticket_url` et garde la colonne `État` visible sans scroll horizontal sur un écran standard
-- `public/test.html` ne met plus `data-source` en dur : la page résout la source via `?source=<slug>` + `/api/admin/apps`, puis injecte dynamiquement le widget avec `data-source` et `data-app-name`
-- `public/test.html` affiche un sélecteur `Application cible`, recharge la page sur `?source=<slug>` au changement, et expose un lien discret `← Admin` vers `/admin/feedbacks`
-- Défaut de `public/test.html` : `demo`; choisir `bookingsExtApi` / `team-tracker` / `aam-website` crée un vrai ticket Candy, `stats-v1` / `hotel-aggregator` restent `pending` tant que Sandy n'est pas branché, `demo` finit en `skipped`
+- `public/new.html` ne met plus `data-source` en dur : la page résout la source via `?source=<slug>` + `/api/admin/apps`, puis injecte dynamiquement le widget avec `data-source` et `data-app-name`
+- `public/new.html` affiche un sélecteur `Application cible`, recharge la page sur `?source=<slug>` au changement, et expose un lien discret `← Admin` vers `/admin/feedbacks`
+- Défaut de `public/new.html` : `demo`; choisir `bookingsExtApi` / `team-tracker` / `aam-website` crée un vrai ticket Candy, `stats-v1` / `hotel-aggregator` restent `pending` tant que Sandy n'est pas branché, `demo` finit en `skipped`
 - PM2 process name: `feedback-service`
 
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #250 — placeholder `ticket_url` clarifié dans l’admin apps
-- **Etat courant spécifique :** le formulaire `/admin/apps` ne peut plus faire passer un `ticket_url` vide pour une valeur déjà saisie : placeholder explicite (`ex. ... — vide = non routé`) + rendu italique/gris léger, vérifiés sur le HTML servi par `feedback-service`
-- **Prochaine étape :** #251 ou #253 selon ordre/priorité du backlog restant
+- **Dernier ticket :** #251 — page `New` dans le menu admin
+- **Etat courant spécifique :** la page de création de feedback est maintenant servie sous `/widget/new.html` (renommage de `public/test.html` via `git mv`) et la navigation admin expose `Feedbacks | Apps | New`, vérifiés sur le HTML servi par `feedback-service`
+- **Prochaine étape :** nettoyer le ticket de test #253 ou poursuivre le backlog feedback-service restant

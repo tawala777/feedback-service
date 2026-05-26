@@ -78,7 +78,7 @@ function renderNav(active) {
   const item = (key, href, label) => active === key
     ? `<strong>${label}</strong>`
     : `<a href="${href}">${label}</a>`;
-  return `<nav class="topnav">${item('feedbacks', '/admin/feedbacks', 'Feedbacks')} <span class="sep">|</span> ${item('apps', '/admin/apps', 'Apps')}</nav>`;
+  return `<nav class="topnav">${item('feedbacks', '/admin/feedbacks', 'Feedbacks')} <span class="sep">|</span> ${item('apps', '/admin/apps', 'Apps')} <span class="sep">|</span> ${item('new', '/widget/new.html', 'New')}</nav>`;
 }
 
 function renderDashboard(conversations) {
