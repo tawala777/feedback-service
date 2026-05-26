@@ -11,7 +11,8 @@ const { runDispatch } = require('./dispatcher');
 
 const app = express();
 const PORT = process.env.PORT || 4400;
-const UPLOAD_DIR = path.join(__dirname, '..', 'public', 'uploads', 'feedback');
+const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+const UPLOAD_DIR = path.join(PUBLIC_DIR, 'uploads', 'feedback');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const upload = multer({
   storage: multer.diskStorage({
@@ -109,6 +110,10 @@ function getAgentTicketHref(c) {
   const route = getRoute(c.source);
   if (!route || !route.url) return null;
   return route.url.replace(/\/api\/tickets$/, `/api/tickets/${c.ticket_id}`);
+}
+
+function faviconLinkTag() {
+  return '<link rel="icon" type="image/svg+xml" href="/favicon.svg">';
 }
 
 function ticketBlock(c) {
@@ -262,7 +267,7 @@ function renderDashboard(conversations) {
   }).join('');
 
   return `<!DOCTYPE html><html lang="fr"><head>
-    <meta charset="UTF-8"><title>Feedbacks — Admin</title>
+    <meta charset="UTF-8"><title>Feedbacks — Admin</title>${faviconLinkTag()}
     <style>
       body { font-family: system-ui, sans-serif; margin: 20px; color: #111; }
       .topnav { margin-bottom: 14px; font-size: 14px; color:#475569; }
@@ -323,7 +328,7 @@ function renderDetail(conv, messages, spec) {
     <div class="err" style="background:#fff7ed;color:#9a3412;border-color:#fed7aa;"><b>Doublon détecté</b>\nOriginal : <a href="/admin/feedbacks/${esc(conv.duplicate_of)}">${esc(conv.duplicate_of)}</a>\n${esc(conv.duplicate_reason || '')}</div>` : '';
 
   return `<!DOCTYPE html><html lang="fr"><head>
-    <meta charset="UTF-8"><title>Feedback ${esc(conv.id)}</title>
+    <meta charset="UTF-8"><title>Feedback ${esc(conv.id)}</title>${faviconLinkTag()}
     <style>
       body { font-family: system-ui, sans-serif; margin: 20px; color: #111; max-width: 860px; }
       .topnav { margin-bottom: 14px; font-size: 14px; color:#475569; }
@@ -408,7 +413,7 @@ function renderApps(apps) {
   }).join('');
 
   return `<!DOCTYPE html><html lang="fr"><head>
-    <meta charset="UTF-8"><title>Apps — Admin</title>
+    <meta charset="UTF-8"><title>Apps — Admin</title>${faviconLinkTag()}
     <style>
       body { font-family: system-ui, sans-serif; margin: 20px; color: #111; }
       .topnav { margin-bottom: 14px; font-size: 14px; color:#475569; }
@@ -511,6 +516,16 @@ function renderApps(apps) {
       </script>
     </body></html>`;
 }
+
+app.get('/favicon.svg', (req, res) => {
+  res.type('image/svg+xml');
+  res.sendFile('favicon.svg', { root: PUBLIC_DIR });
+});
+
+app.get('/favicon.ico', (req, res) => {
+  res.type('image/svg+xml');
+  res.sendFile('favicon.svg', { root: PUBLIC_DIR });
+});
 
 app.get('/api/feedback/health', (req, res) => {
   res.json({ ok: true, port: PORT, ts: new Date().toISOString(), db: dbModule.counts() });
@@ -696,9 +711,9 @@ app.get('/admin/apps', (req, res) => {
   res.send(renderApps(dbModule.listApps()));
 });
 
-app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
+app.use('/uploads', express.static(path.join(PUBLIC_DIR, 'uploads')));
 
-app.use('/widget', express.static(path.join(__dirname, '..', 'public'), {
+app.use('/widget', express.static(PUBLIC_DIR, {
   maxAge: '5m',
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.js')) {

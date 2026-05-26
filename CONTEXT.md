@@ -56,6 +56,7 @@ feedback-service/
 - La `description` du ticket dispatché embarque désormais `Conversation + detail : <service>/admin/feedbacks/<conversationId>` puis un bloc `Conversation complete` contenant tous les messages `user`/`assistant` horodatés dans l'ordre
 - Le lien de détail injecté dans les tickets utilise `FEEDBACK_SERVICE_URL` ou `SERVICE_URL` si défini, sinon fallback `http://localhost:4400`
 - Le widget statique est servi sous `/widget/*` avec `Cache-Control: public, max-age=300`
+- Le service expose maintenant un favicon SVG commun via `/favicon.svg` et `/favicon.ico`, injecté dans les pages admin et dans `/widget/new.html`
 - Les fichiers JS widget forcent `Content-Type: application/javascript; charset=utf-8`
 - Le widget utilise `document.currentScript` avec fallback `querySelector('script[src*="feedback-widget.js"]')`
 - Le header du widget affiche explicitement le nom de l'application : `data-app-name` si fourni, sinon fallback sur `data-source`
@@ -98,6 +99,6 @@ feedback-service/
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #256 — correction du positionnement du panneau `ⓘ`
-- **Etat courant spécifique :** le panneau d’infos du widget reste maintenant entièrement dans la modale grâce à un ancrage sur le header (`left/right` fixes dans la carte, plus de `right:0` sur le wrapper du bouton), sans déborder à gauche hors de la carte
+- **Dernier ticket :** #257 — ajout du favicon
+- **Etat courant spécifique :** toutes les pages HTML du service partagent maintenant le même favicon SVG (`/favicon.svg`, alias `/favicon.ico`) cohérent avec la palette du widget, sans 404 favicon côté navigateur
 - **Prochaine étape :** nouveau backlog feedback-service ou fin du lot d’observabilité widget/admin
