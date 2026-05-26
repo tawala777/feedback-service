@@ -39,7 +39,7 @@ const MAX_DISPATCH_ATTEMPTS = 5;
 
 function dispatchLabel(c) {
   if (!c.dispatch_status) return c.finalized_at ? 'finalisé' : 'draft';
-  return { pending: 'en file', failed: 'échec (retry)', sent: 'envoyé' }[c.dispatch_status] || c.dispatch_status;
+  return { pending: 'en file', failed: 'échec (retry)', sent: 'envoyé', skipped: c.duplicate_of ? 'doublon ignoré' : 'ignoré' }[c.dispatch_status] || c.dispatch_status;
 }
 
 function esc(s) {
@@ -68,6 +68,9 @@ function ticketBlock(c) {
   if (c.dispatch_status === 'failed') {
     return `Échec dispatch : <code>${esc(c.last_dispatch_error)}</code> (tentatives : ${c.dispatch_attempts || 0}/${MAX_DISPATCH_ATTEMPTS})`;
   }
+  if (c.dispatch_status === 'skipped' && c.duplicate_of) {
+    return `Doublon ignoré → <a href="/admin/feedbacks/${esc(c.duplicate_of)}">${esc(c.duplicate_of)}</a>${c.duplicate_reason ? ` · ${esc(c.duplicate_reason)}` : ''}`;
+  }
   return esc(c.dispatch_status || 'draft');
 }
 
@@ -89,7 +92,9 @@ function renderDashboard(conversations) {
       ? `${ticketHref ? `<a href="${esc(ticketHref)}" target="_blank" rel="noopener noreferrer">${esc(c.ticket_destination)}</a>` : esc(c.ticket_destination)}${c.agent_ticket_status ? ` <small>(${esc(c.agent_ticket_status)})</small>` : ''}`
       : (c.dispatch_status === 'failed'
           ? `<div style="color:#b91c1c;font-size:13px;line-height:1.45"><b>${c.dispatch_attempts || 0}/${MAX_DISPATCH_ATTEMPTS}</b> · ${esc(c.last_dispatch_error || 'erreur inconnue')}</div>`
-          : '—');
+          : (c.dispatch_status === 'skipped' && c.duplicate_of)
+            ? `<div style="color:#92400e;font-size:13px;line-height:1.45"><b>Doublon</b> · <a href="/admin/feedbacks/${esc(c.duplicate_of)}">voir original</a></div>`
+            : '—');
     return `<tr>
       <td><a href="/admin/feedbacks/${c.id}">${date}</a></td>
       <td><code>${esc(c.source)}</code></td>
@@ -158,6 +163,9 @@ function renderDetail(conv, messages, spec) {
       <span id="redispatch-msg" style="margin-left:10px;color:#6b7280"></span>
     </form>` : '';
 
+  const duplicateBlock = conv.dispatch_status === 'skipped' && conv.duplicate_of ? `
+    <div class="err" style="background:#fff7ed;color:#9a3412;border-color:#fed7aa;"><b>Doublon détecté</b>\nOriginal : <a href="/admin/feedbacks/${esc(conv.duplicate_of)}">${esc(conv.duplicate_of)}</a>\n${esc(conv.duplicate_reason || '')}</div>` : '';
+
   return `<!DOCTYPE html><html lang="fr"><head>
     <meta charset="UTF-8"><title>Feedback ${esc(conv.id)}</title>
     <style>
@@ -193,6 +201,7 @@ function renderDetail(conv, messages, spec) {
     </div>
     ${attachmentBlock}
     ${failedBlock}
+    ${duplicateBlock}
     <h2>Échange</h2>
     ${msgs || '<p><i>Aucun message.</i></p>'}
     ${specBlock}
@@ -440,6 +449,11 @@ app.post('/api/feedback/submit', (req, res) => {
     if (!spec) return res.status(400).json({ error: 'spec not finalized (no [READY_FOR_SUBMIT] marker)' });
 
     if (userId && String(userId).trim()) dbModule.setConversationUser(conversationId, String(userId).trim());
+    const dupe = dbModule.findDuplicate({ conversationId, source: dbModule.getConversationForDispatch(conversationId)?.source, submitSpec: spec });
+    if (dupe) {
+      dbModule.markDuplicate({ conversationId, submitSpec: spec, duplicateOf: dupe.id, reason: 'Même type/titre/description qu\'un feedback existant' });
+      return res.json({ conversationId, status: 'duplicate', duplicateOf: dupe.id });
+    }
     dbModule.markReadyForDispatch({ conversationId, submitSpec: spec });
     return res.json({ conversationId, status: 'queued' });
   } catch (err) {

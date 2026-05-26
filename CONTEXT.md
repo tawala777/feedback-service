@@ -50,6 +50,7 @@ feedback-service/
 - `listApps()` / `getApp()` / `discoverApp()` / `upsertApp()` vivent dans `src/db.js`; `routing.js` ne contient plus de mapping statique
 - Une source inconnue n'est plus rejetée au dispatch : elle est auto-créée dans `apps` avec `configured=0`, sans destination, et le feedback reste `pending` tant qu'un dev n'est pas assigné
 - Une source avec `skip=1` est consommée par le dispatcher en `dispatch_status='skipped'` et ne crée jamais de ticket backlog
+- Une conversation soumise avec une spec strictement identique (`type + title + description`) à une conversation plus ancienne de la même source est marquée en doublon léger : `dispatch_status='skipped'`, `duplicate_of=<id original>`, `duplicate_reason` renseigné
 - Le dispatcher envoie désormais un payload unifié à Candy ET Sandy : `title`, `description`, `priority`, `mission`, `lot`, `wave`, `createdBy`
 - La `description` dispatchée n'est plus un simple résumé : elle inclut aussi `Utilisateur déclaré`, `## Transcript complet` (tous les tours user/assistant) et `## Captures jointes` si des images existent
 - La `description` du ticket dispatché embarque désormais `Conversation + detail : <service>/admin/feedbacks/<conversationId>` puis un bloc `Conversation complete` contenant tous les messages `user`/`assistant` horodatés dans l'ordre
@@ -77,6 +78,7 @@ feedback-service/
 - `/admin/feedbacks/:id` affiche l'échange complet, les captures jointes (`attachments`), la spec soumise (`submit_spec`) et l'état ticket enrichi si disponible
 - Pour les lignes `envoyé`, la liste et le détail tentent de lire le ticket agent courant, affichent son statut brut (`open`, `resolved`, `http 404`, `unreachable`, etc.) et rendent `ticket_destination` cliquable vers l'endpoint ticket correspondant
 - Pour les lignes `failed`, la liste montre l'erreur complète en rouge + compteur `tentatives/5`, et la vue détail affiche un bouton `Re-poster`
+- Pour les lignes `skipped` issues d'un doublon, la liste montre un badge/lien `Doublon · voir original`, et la vue détail affiche un bloc `Doublon détecté` avec lien vers l'original
 - `POST /admin/feedbacks/:id/redispatch` est limité aux conversations `failed` : il remet `pending`, remet les compteurs à zéro, puis le dispatcher la reprend au cycle suivant
 - `/api/admin/apps` expose les apps en JSON ; `POST /api/admin/apps` crée/édite une app et recalcule `configured` selon la présence d'un `agent`
 - `/admin/apps` affiche le tableau des apps + un formulaire simple de configuration, avec badge visible `⚠ à configurer` quand `configured=0`

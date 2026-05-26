@@ -45,6 +45,8 @@ function migrate() {
   addCol('conversations', 'dispatch_attempts', 'INTEGER DEFAULT 0');
   addCol('conversations', 'last_dispatch_error', 'TEXT');
   addCol('conversations', 'dispatched_at', 'INTEGER');
+  addCol('conversations', 'duplicate_of', 'TEXT');
+  addCol('conversations', 'duplicate_reason', 'TEXT');
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS apps (
@@ -112,6 +114,32 @@ function markReadyForDispatch({ conversationId, submitSpec }) {
   db.prepare(
     `UPDATE conversations SET finalized_at = ?, submit_spec = ?, dispatch_status = 'pending' WHERE id = ?`
   ).run(Date.now(), JSON.stringify(submitSpec), conversationId);
+}
+
+function markDuplicate({ conversationId, submitSpec, duplicateOf, reason }) {
+  db.prepare(
+    `UPDATE conversations
+     SET finalized_at = ?, submit_spec = ?, dispatch_status = 'skipped', duplicate_of = ?, duplicate_reason = ?
+     WHERE id = ?`
+  ).run(Date.now(), JSON.stringify(submitSpec), duplicateOf, reason, conversationId);
+}
+
+function findDuplicate({ conversationId, source, submitSpec }) {
+  const rows = db.prepare(
+    `SELECT id, submit_spec, finalized_at, dispatch_status
+     FROM conversations
+     WHERE id != ? AND source = ? AND submit_spec IS NOT NULL AND finalized_at IS NOT NULL
+     ORDER BY finalized_at DESC`
+  ).all(conversationId, source);
+  for (const row of rows) {
+    try {
+      const spec = JSON.parse(row.submit_spec);
+      if (spec.type === submitSpec.type && spec.title === submitSpec.title && spec.description === submitSpec.description) {
+        return row;
+      }
+    } catch {}
+  }
+  return null;
 }
 
 function getPendingDispatch(maxAttempts) {
@@ -197,6 +225,8 @@ module.exports = {
   finalizeConversation,
   setConversationUser,
   markReadyForDispatch,
+  markDuplicate,
+  findDuplicate,
   getPendingDispatch,
   markDispatched,
   markDispatchFailed,
