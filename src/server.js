@@ -268,6 +268,7 @@ function renderApps(apps) {
       code { background: #f3f4f6; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
       label { display:block; font-size:13px; color:#374151; margin-bottom:4px; }
       input { width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:6px; }
+      input::placeholder { color:#94a3b8; font-style:italic; }
       .grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; max-width: 900px; }
       .checks { display:flex; gap:18px; margin: 8px 0 18px; }
       .checks label { display:flex; align-items:center; gap:8px; margin:0; }
@@ -291,7 +292,7 @@ function renderApps(apps) {
           <div><label>slug<input name="slug" required></label></div>
           <div><label>label<input name="label"></label></div>
           <div><label>agent<input name="agent" placeholder="candy ou sandy"></label></div>
-          <div><label>ticket_url<input name="ticket_url" placeholder="http://localhost:4000/api/tickets"></label></div>
+          <div><label>ticket_url<input name="ticket_url" placeholder="ex. http://localhost:4000/api/tickets — vide = non routé"></label></div>
           <div><label>mission<input name="mission"></label></div>
           <div><label>lot<input name="lot" type="number"></label></div>
           <div><label>wave<input name="wave" type="number"></label></div>

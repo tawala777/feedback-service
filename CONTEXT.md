@@ -82,6 +82,7 @@ feedback-service/
 - `POST /admin/feedbacks/:id/redispatch` est limité aux conversations `failed` : il remet `pending`, remet les compteurs à zéro, puis le dispatcher la reprend au cycle suivant
 - `/api/admin/apps` expose les apps en JSON ; `POST /api/admin/apps` crée/édite une app et recalcule `configured` selon la présence d'un `agent`
 - `/admin/apps` affiche le tableau des apps + un formulaire simple de configuration, avec badge visible `⚠ à configurer` quand `configured=0`
+- Le champ `ticket_url` du formulaire admin utilise un placeholder explicitement indicatif (`ex. ... — vide = non routé`) et les placeholders y sont rendus en italique/gris léger pour éviter la confusion avec une valeur réellement saisie
 - Chaque ligne de `/admin/apps` propose désormais un bouton `Éditer` qui pré-remplit immédiatement le formulaire du bas (édition rapide inline, sans nouvelle page)
 - Le tableau `apps` wrappe désormais `ticket_url` et garde la colonne `État` visible sans scroll horizontal sur un écran standard
 - `public/test.html` ne met plus `data-source` en dur : la page résout la source via `?source=<slug>` + `/api/admin/apps`, puis injecte dynamiquement le widget avec `data-source` et `data-app-name`
@@ -92,6 +93,6 @@ feedback-service/
 ## Etat courant
 
 - **Travail en cours :** aucun
-- **Dernier ticket :** #244 — transcript complet + lien détail dans le ticket dispatché
-- **Etat courant spécifique :** chaque ticket créé par le dispatcher embarque désormais le transcript complet horodaté de la conversation et un lien direct vers `/admin/feedbacks/:id`, vérifié sur un vrai dispatch `bookingsExtApi` puis ticket de test supprimé
-- **Prochaine étape :** #245 — upload image (coller/fichier) + stockage + affichage admin
+- **Dernier ticket :** #250 — placeholder `ticket_url` clarifié dans l’admin apps
+- **Etat courant spécifique :** le formulaire `/admin/apps` ne peut plus faire passer un `ticket_url` vide pour une valeur déjà saisie : placeholder explicite (`ex. ... — vide = non routé`) + rendu italique/gris léger, vérifiés sur le HTML servi par `feedback-service`
+- **Prochaine étape :** #251 ou #253 selon ordre/priorité du backlog restant
